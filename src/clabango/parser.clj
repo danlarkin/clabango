@@ -22,7 +22,7 @@
             body (.trim (apply str body))
             matched? (:matched (meta t))]
         (if (and matched?
-                 (not ((set body) \|)))
+                 (= #{} (clojure.set/intersection (set body) #{\| \{})))
           [(context body)
            parsed-rest]
           nil)))))
@@ -33,7 +33,8 @@
       (let [[body parsed-rest :as t] (parse-for rest-tokens [\} \}])
             [body filter-name] (.split (.trim (apply str body)) "\\|")
             matched? (:matched (meta t))]
-        (if (and matched?)
+        (if (and matched?
+                 (= #{} (clojure.set/intersection (set body) #{\{})))
           [(template-filter filter-name (context body))
            parsed-rest]
           nil)))))
@@ -77,4 +78,7 @@
       [(flatten acc) tokens])))
 
 (defn render [template context]
-  (apply str (first (parse (lex template) context))))
+  (let [[tokens leftover] (parse (lex template) context)]
+    (if (seq leftover)
+      (throw (Exception. "failed to parse?"))
+      (apply str tokens))))
