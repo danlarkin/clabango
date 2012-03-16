@@ -1,4 +1,5 @@
-(ns clabango.parser)
+(ns clabango.parser
+  (:use [clabango.filters :only [template-filter]]))
 
 (def lex seq)
 
@@ -14,30 +15,32 @@
         (recur (conj acc (first tokens))
                (next tokens))))))
 
-(defn parse-var [tokens]
+(defn parse-var [tokens context]
   (let [[a b & rest-tokens] tokens]
     (when (= a b \{)
       (let [[body parsed-rest :as t] (parse-for rest-tokens [\} \}])
+            body (.trim (apply str body))
             matched? (:matched (meta t))]
         (if (and matched?
                  (not ((set body) \|)))
-          [body
+          [(context body)
            parsed-rest]
           nil)))))
 
-(defn parse-filter [tokens]
+(defn parse-filter [tokens context]
   (let [[a b & rest-tokens] tokens]
     (when (= a b \{)
       (let [[body parsed-rest :as t] (parse-for rest-tokens [\} \}])
+            [body filter-name] (.split (.trim (apply str body)) "\\|")
             matched? (:matched (meta t))]
         (if (and matched?)
-          [(concat body (seq "AW YEAH"))
+          [(template-filter filter-name (context body))
            parsed-rest]
           nil)))))
 
 (def balanced-tags {"start" (seq "{% stop %}")})
 
-(defn parse-tag [tokens]
+(defn parse-tag [tokens context]
   (let [[a b & rest-tokens] tokens]
     (when (and (= a \{)
                (= b \%))
@@ -56,19 +59,22 @@
              parsed-rest])
           nil)))))
 
-(defn parse [tokens]
+(defn parse [tokens context]
   (loop [acc []
          tokens tokens]
     (if-let [token (first tokens)]
-      (if-let [[new-node rest-tokens] (parse-var tokens)]
+      (if-let [[new-node rest-tokens] (parse-var tokens context)]
         (recur (conj acc new-node)
                rest-tokens)
-        (if-let [[new-node rest-tokens] (parse-filter tokens)]
+        (if-let [[new-node rest-tokens] (parse-filter tokens context)]
           (recur (conj acc new-node)
                  rest-tokens)
-          (if-let [[new-node rest-tokens] (parse-tag tokens)]
+          (if-let [[new-node rest-tokens] (parse-tag tokens context)]
             (recur (conj acc new-node)
                    rest-tokens)
             (recur (conj acc token)
                    (next tokens)))))
       [(flatten acc) tokens])))
+
+(defn render [template context]
+  (apply str (first (parse (lex template) context))))
