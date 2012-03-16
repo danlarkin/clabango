@@ -35,8 +35,26 @@
            parsed-rest]
           nil)))))
 
-(defn parse-foobar [tokens]
-  nil)
+(def balanced-tags {"start" (seq "{% stop %}")})
+
+(defn parse-tag [tokens]
+  (let [[a b & rest-tokens] tokens]
+    (when (and (= a \{)
+               (= b \%))
+      (let [[body parsed-rest :as t] (parse-for rest-tokens [\% \}])
+            body (apply str body)
+            matched? (:matched (meta t))]
+        (if matched?
+          (if-let [end-tag (balanced-tags (.trim body))]
+            (let [[body parsed-rest :as t]  (parse-for parsed-rest end-tag)
+                  body (apply str body)
+                  matched? (:matched (meta t))]
+              (when matched?
+                [(concat body (seq "<----"))
+                 parsed-rest]                ))
+            [(concat body (seq "AW YEAH"))
+             parsed-rest])
+          nil)))))
 
 (defn parse [tokens]
   (loop [acc []
@@ -48,7 +66,7 @@
         (if-let [[new-node rest-tokens] (parse-filter tokens)]
           (recur (conj acc new-node)
                  rest-tokens)
-          (if-let [[new-node rest-tokens] (parse-foobar tokens)]
+          (if-let [[new-node rest-tokens] (parse-tag tokens)]
             (recur (conj acc new-node)
                    rest-tokens)
             (recur (conj acc token)
