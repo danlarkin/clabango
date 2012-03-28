@@ -1,7 +1,74 @@
 (ns clabango.parser
   (:use [clabango.filters :only [template-filter]]))
 
-(def lex seq)
+(defn lex [s]
+  (let [max (.length s)
+        sb (StringBuilder.)]
+    (loop [result []
+           i 0]
+      (if (>= i max)
+        (if (zero? (.length sb))
+          result
+          (conj result (str sb)))
+        (let [c (.charAt s i)]
+          (if (>= (inc i) max)
+            (do
+              (.append sb c)
+              (recur result
+                     (inc i)))
+            (case c
+              \{ (let [ni (+ 2 i)
+                       nc (.charAt s (inc i))]
+                   (case nc
+                     \{ (let [s (str sb)]
+                          (.delete sb 0 (.length sb))
+                          (recur (if (zero? (count s))
+                                   (conj result :open-filter)
+                                   (vec (concat result [s :open-filter])))
+                                 ni))
+                     \% (let [s (str sb)]
+                          (.delete sb 0 (.length sb))
+                          (recur (if (zero? (count s))
+                                   (conj result :open-tag)
+                                   (vec (concat result [s :open-tag])))
+                                 ni))
+                     (do
+                       (.append sb c)
+                       (.append sb nc)
+                       (recur result
+                              ni))))
+              \} (let [ni (+ 2 i)
+                       nc (.charAt s (inc i))]
+                   (case nc
+                     \} (let [s (str sb)]
+                          (.delete sb 0 (.length sb))
+                          (recur (if (zero? (count s))
+                                   (conj result :close-filter)
+                                   (vec (concat result [s :close-filter])))
+                                 ni))
+                     (do
+                       (.append sb c)
+                       (.append sb nc)
+                       (recur result
+                              ni))))
+              \% (let [ni (+ 2 i)
+                       nc (.charAt s (inc i))]
+                   (case nc
+                     \} (let [s (str sb)]
+                          (.delete sb 0 (.length sb))
+                          (recur (if (zero? (count s))
+                                   (conj result :close-tag)
+                                   (vec (concat result [s :close-tag])))
+                                 ni))
+                     (do
+                       (.append sb c)
+                       (.append sb nc)
+                       (recur result
+                              ni))))
+              (do
+                (.append sb c)
+                (recur result
+                       (inc i))))))))))
 
 (defn parse-for [tokens desired-tokens]
   (loop [acc []
