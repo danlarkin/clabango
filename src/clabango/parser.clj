@@ -5,69 +5,104 @@
   (let [max (.length s)
         sb (StringBuilder.)]
     (loop [result []
+           started 1
            i 0]
       (if (>= i max)
         (if (zero? (.length sb))
           result
-          (conj result (str sb)))
+          (conj result {:started started
+                        :token (str sb)}))
         (let [c (.charAt s i)]
           (if (>= (inc i) max)
             (do
               (.append sb c)
               (recur result
+                     started
                      (inc i)))
             (case c
               \{ (let [ni (+ 2 i)
                        nc (.charAt s (inc i))]
                    (case nc
-                     \{ (let [s (str sb)]
-                          (.delete sb 0 (.length sb))
-                          (recur (if (zero? (count s))
-                                   (conj result :open-filter)
-                                   (vec (concat result [s :open-filter])))
+                     \{ (let [s (str sb)
+                              slen (.length sb)
+                              new-started (+ started slen)]
+                          (.delete sb 0 slen)
+                          (recur (if (zero? slen)
+                                   (conj result {:started new-started
+                                                 :token :open-filter})
+                                   (vec (concat result [{:started started
+                                                         :token s}
+                                                        {:started new-started
+                                                         :token :open-filter}])))
+                                 (+ 2 new-started)
                                  ni))
-                     \% (let [s (str sb)]
-                          (.delete sb 0 (.length sb))
-                          (recur (if (zero? (count s))
-                                   (conj result :open-tag)
-                                   (vec (concat result [s :open-tag])))
+                     \% (let [s (str sb)
+                              slen (.length sb)
+                              new-started (+ started slen)]
+                          (.delete sb 0 slen)
+                          (recur (if (zero? slen)
+                                   (conj result {:started new-started
+                                                 :token :open-tag})
+                                   (vec (concat result [{:started started
+                                                         :token s}
+                                                        {:started new-started
+                                                         :token :open-tag}])))
+                                 (+ 2 new-started)
                                  ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
+                              started
                               ni))))
               \} (let [ni (+ 2 i)
                        nc (.charAt s (inc i))]
                    (case nc
-                     \} (let [s (str sb)]
-                          (.delete sb 0 (.length sb))
-                          (recur (if (zero? (count s))
-                                   (conj result :close-filter)
-                                   (vec (concat result [s :close-filter])))
+                     \} (let [s (str sb)
+                              slen (.length sb)
+                              new-started (+ started slen)]
+                          (.delete sb 0 slen)
+                          (recur (if (zero? slen)
+                                   (conj result {:started new-started
+                                                 :token :close-filter})
+                                   (vec (concat result [{:started started
+                                                         :token s}
+                                                        {:started new-started
+                                                         :token :close-filter}])))
+                                 (+ 2 new-started)
                                  ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
+                              started
                               ni))))
               \% (let [ni (+ 2 i)
                        nc (.charAt s (inc i))]
                    (case nc
-                     \} (let [s (str sb)]
-                          (.delete sb 0 (.length sb))
-                          (recur (if (zero? (count s))
-                                   (conj result :close-tag)
-                                   (vec (concat result [s :close-tag])))
+                     \} (let [s (str sb)
+                              slen (.length sb)
+                              new-started (+ started slen)]
+                          (.delete sb 0 slen)
+                          (recur (if (zero? slen)
+                                   (conj result {:started new-started
+                                                 :token :close-tag})
+                                   (vec (concat result [{:started started
+                                                         :token s}
+                                                        {:started new-started
+                                                         :token :close-tag}])))
+                                 (+ 2 new-started)
                                  ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
+                              started
                               ni))))
               (do
                 (.append sb c)
                 (recur result
+                       started
                        (inc i))))))))))
 
 (defn parse-for [tokens desired-tokens]

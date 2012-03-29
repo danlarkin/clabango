@@ -4,17 +4,31 @@
 
 (deftest lex-tests
   (is (= (lex "a b c d")
-         ["a b c d"]))
+         [{:started 1 :token "a b c d"}]))
   (is (= (lex "a {{ b c d")
-         ["a " :open-filter " b c d"]))
+         [{:started 1 :token "a "}
+          {:started 3 :token :open-filter}
+          {:started 5 :token " b c d"}]))
   (is (= (lex "a {{ b c }}d")
-         ["a " :open-filter " b c " :close-filter "d"]))
+         [{:started 1 :token "a "}
+          {:started 3 :token :open-filter}
+          {:started 5 :token " b c "}
+          {:started 10 :token :close-filter}
+          {:started 12 :token "d"}]))
   (is (= (lex "a {{ b c d}")
-         ["a " :open-filter " b c d}"]))
+         [{:started 1 :token "a "}
+          {:started 3 :token :open-filter}
+          {:started 5 :token " b c d}"}]))
   (is (= (lex "a {{ b c d%}")
-         ["a " :open-filter " b c d" :close-tag]))
+         [{:started 1 :token "a "}
+          {:started 3 :token :open-filter}
+          {:started 5 :token " b c d"}
+          {:started 11 :token :close-tag}]))
   (is (= (lex "a {%foo%}")
-         ["a " :open-tag "foo" :close-tag])))
+         [{:started 1 :token "a "}
+          {:started 3 :token :open-tag}
+          {:started 5 :token "foo"}
+          {:started 8 :token :close-tag}])))
 
 (deftest passthrough
   (let [s "a b c d"]
