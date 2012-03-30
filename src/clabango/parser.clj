@@ -1,7 +1,10 @@
 (ns clabango.parser
   (:use [clabango.filters :only [template-filter]]))
 
+(declare parse)
+
 (defn lex [s]
+  ;; this is a doozy, eh?
   (let [max (.length s)
         sb (StringBuilder.)]
     (loop [result []
@@ -30,10 +33,11 @@
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
                                                  :token :open-filter})
-                                   (vec (concat result [{:started started
-                                                         :token s}
-                                                        {:started new-started
-                                                         :token :open-filter}])))
+                                   (vec (concat result
+                                                [{:started started
+                                                  :token s}
+                                                 {:started new-started
+                                                  :token :open-filter}])))
                                  (+ 2 new-started)
                                  ni))
                      \% (let [s (str sb)
@@ -65,10 +69,11 @@
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
                                                  :token :close-filter})
-                                   (vec (concat result [{:started started
-                                                         :token s}
-                                                        {:started new-started
-                                                         :token :close-filter}])))
+                                   (vec (concat result
+                                                [{:started started
+                                                  :token s}
+                                                 {:started new-started
+                                                  :token :close-filter}])))
                                  (+ 2 new-started)
                                  ni))
                      (do
@@ -105,82 +110,90 @@
                        started
                        (inc i))))))))))
 
-(defn parse-for [tokens desired-tokens]
-  (loop [acc []
-         tokens tokens]
-    (if (not (seq tokens))
-      [acc nil]
-      (if (= desired-tokens (take (count desired-tokens) tokens))
-        (with-meta
-          [acc (nthnext tokens (count desired-tokens))]
-          {:matched true})
-        (recur (conj acc (first tokens))
-               (next tokens))))))
+(defn find-close-filter [tokens]
+  (let [[a b c & rest-tokens] tokens]
+    (if (and (= (:token a) :open-filter)
+             (string? (:token b))
+             (= (:token c) :close-filter))
+      [{:type :filter
+        :body b}
+       rest-tokens]
+      (throw (Exception. (str "parsing error after " a))))))
 
-(defn parse-var [tokens context]
-  (let [[a b & rest-tokens] tokens]
-    (when (= a b \{)
-      (let [[body parsed-rest :as t] (parse-for rest-tokens [\} \}])
-            body (.trim (apply str body))
-            matched? (:matched (meta t))]
-        (if (and matched?
-                 (= #{} (clojure.set/intersection (set body) #{\| \{})))
-          [(context body)
-           parsed-rest]
-          nil)))))
+(defn find-close-tag [tokens]
+  (let [[a b c & rest-tokens] tokens]
+    (if (and (= (:token a) :open-tag)
+             (string? (:token b))
+             (= (:token c) :close-tag))
+      [{:type :tag
+        :body b}
+       rest-tokens]
+      (throw (Exception. (str "parsing error after " a))))))
 
-(defn parse-filter [tokens context]
-  (let [[a b & rest-tokens] tokens]
-    (when (= a b \{)
-      (let [[body parsed-rest :as t] (parse-for rest-tokens [\} \}])
-            [body filter-name] (.split (.trim (apply str body)) "\\|")
-            matched? (:matched (meta t))]
-        (if (and matched?
-                 (= #{} (clojure.set/intersection (set body) #{\{})))
-          [(template-filter filter-name (context body))
-           parsed-rest]
-          nil)))))
+(defn ast [tokens]
+  (lazy-seq
+   (when-let [token (first tokens)]
+     (case (:token token)
+       :open-filter (let [[token rest-tokens] (find-close-filter tokens)]
+                      (cons token (ast rest-tokens)))
+       :open-tag (let [[token rest-tokens] (find-close-tag tokens)]
+                   (cons token (ast rest-tokens)))
+       (cons {:type :string
+              :body token}
+             (ast (rest tokens)))))))
 
-(def balanced-tags {"start" (seq "{% stop %}")})
+(defn load-template [template]
+  (-> (Thread/currentThread)
+      (.getContextClassLoader)
+      (.getResource template)
+      slurp))
 
-(defn parse-tag [tokens context]
-  (let [[a b & rest-tokens] tokens]
-    (when (and (= a \{)
-               (= b \%))
-      (let [[body parsed-rest :as t] (parse-for rest-tokens [\% \}])
-            body (apply str body)
-            matched? (:matched (meta t))]
-        (if matched?
-          (if-let [end-tag (balanced-tags (.trim body))]
-            (let [[body parsed-rest :as t]  (parse-for parsed-rest end-tag)
-                  body (apply str body)
-                  matched? (:matched (meta t))]
-              (when matched?
-                [(concat body (seq "<----"))
-                 parsed-rest]                ))
-            [(concat body (seq "AW YEAH"))
-             parsed-rest])
-          nil)))))
+(defn parse-tags [ast context]
+  (lazy-seq
+   (when-let [node (first ast)]
+     (if (= :tag (:type node))
+       (let [[tag & args] (.split (.trim (:token (:body node))) " ")]
+         (case tag
+           "include" (let [[template] args
+                           template (second (re-find #"\"(.*)\"" template))]
+                       (concat (parse (load-template template) context)
+                               (parse-tags (rest ast) context)))
+           (throw (Exception. (str "unknown tag: " node)))))
+       (cons node (parse-tags (rest ast) context))))))
 
-(defn parse [tokens context]
-  (loop [acc []
-         tokens tokens]
-    (if-let [token (first tokens)]
-      (if-let [[new-node rest-tokens] (parse-var tokens context)]
-        (recur (conj acc new-node)
-               rest-tokens)
-        (if-let [[new-node rest-tokens] (parse-filter tokens context)]
-          (recur (conj acc new-node)
-                 rest-tokens)
-          (if-let [[new-node rest-tokens] (parse-tag tokens context)]
-            (recur (conj acc new-node)
-                   rest-tokens)
-            (recur (conj acc token)
-                   (next tokens)))))
-      [(flatten acc) tokens])))
+(defn parse-filters [ast context]
+  (lazy-seq
+   (when-let [node (first ast)]
+     (if (= :filter (:type node))
+       ;; TODO: is turning var lookups into keywords a good idea?
+       ;; the alternative is leaving them as strings?
+       (let [var-and-filter (.trim (:token (:body node)))
+             [var filter-name] (rest (re-find #"(.*)\|(.*)" var-and-filter))]
+         (cons {:type :string
+                :body {:started (:started (:body node))
+                       :token (if filter-name
+                                (template-filter filter-name
+                                                 (str (context (keyword var))))
+                                (str (context (keyword var-and-filter))))}}
+               (parse-filters (rest ast) context)))
+       (cons node (parse-filters (rest ast) context))))))
 
-(defn render [template context]
-  (let [[tokens leftover] (parse (lex template) context)]
-    (if (seq leftover)
-      (throw (Exception. "failed to parse?"))
-      (apply str tokens))))
+(defn realize [ast]
+  (let [sb (StringBuilder.)]
+    (loop [ast ast]
+      (if-let [node (first ast)]
+        (if (= :string (:type node))
+          (do
+            (.append sb (:token (:body node)))
+            (recur (rest ast)))
+          (throw (Exception. "there should only be AST nodes of type :string")))
+        (str sb)))))
+
+(defn parse [s context]
+  (-> s
+      lex
+      ast
+      (parse-tags context)
+      (parse-filters context)))
+
+(def render (comp realize parse))

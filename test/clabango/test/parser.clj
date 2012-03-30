@@ -37,4 +37,4 @@
     (is (= s (render s {})))))
 
 (deftest filter-upper
-  (is (= "FOO" (render "{{f|upper}}" {"f" "foo"}))))
+  (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
