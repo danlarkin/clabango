@@ -203,8 +203,42 @@
                      (interpret-tags (rest ast) new-context)))))
        (cons node (interpret-tags (rest ast) context))))))
 
-(defn parse-filters [ast context]
+(defn reduce-blocks [ast]
+  ;; TODO: omg this is complicated
+  (let [used-blocks (loop [result ()
+                           ast (reverse ast)
+                           used-blocks {}]
+                      (if-let [node (first ast)]
+                        (if-let [block-name (:block-name node)]
+                          (if (used-blocks block-name)
+                            (recur result
+                                   (rest ast)
+                                   used-blocks)
+                            (recur (cons node result)
+                                   (rest ast)
+                                   (assoc used-blocks block-name node)))
+                          (recur (cons node result)
+                                 (rest ast)
+                                 used-blocks))
+                        used-blocks))]
+    (loop [result []
+           ast ast
+           filled-blocks #{}]
+      (if-let [node (first ast)]
+        (if-let [block-name (:block-name node)]
+          (if (filled-blocks block-name)
+            (recur result
+                   (rest ast)
+                   used-blocks)
+            (recur (conj result (used-blocks block-name))
+                   (rest ast)
+                   (conj filled-blocks block-name)))
+          (recur (conj result node)
+                 (rest ast)
+                 filled-blocks))
+        result))))
 
+(defn parse-filters [ast context]
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :filter (:type node))
@@ -243,6 +277,7 @@
   (-> ast
       parse-tags
       (interpret-tags context)
+      reduce-blocks
       (parse-filters context)))
 
 (defn parse [s context]

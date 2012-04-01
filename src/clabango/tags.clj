@@ -25,8 +25,10 @@
      context]))
 
 (defmethod template-tag "block" [_ nodes context]
-  [""
-   (assoc context :foo 42)])
+  (let [block-name (first (:args (first nodes)))]
+    [(for [node (rest (butlast nodes))]
+       (assoc node :block-name block-name))
+     (assoc context :foo 42)]))
 
 (defmethod template-tag "extends" [_ nodes context]
   (let [[s context] (template-tag "include" nodes context)]
