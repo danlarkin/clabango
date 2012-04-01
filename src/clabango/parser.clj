@@ -2,7 +2,7 @@
   (:use [clabango.filters :only [template-filter]]
         [clabango.tags :only [template-tag]]))
 
-(declare parse)
+(declare parse ast->parsed)
 
 (defn lex [s]
   ;; this is a doozy, eh?
@@ -143,13 +143,14 @@
               :body token}
              (ast (rest tokens)))))))
 
-(def valid-tags {"include" :inline
+(def valid-tags {"extends" :inline
+                 "include" :inline
+                 "with-foo-as-42" "endwith"
                  "block" "endblock"})
 
 (defn valid-tag? [tag-name]
   (or (valid-tags tag-name)
-      (when-let [start-tag-name (second (re-find #"end(.*)" tag-name))]
-        (valid-tags start-tag-name))))
+      ((clojure.set/difference (set (vals valid-tags)) #{:inline}) tag-name)))
 
 (defn parse-tags [ast]
   (lazy-seq
@@ -188,15 +189,22 @@
                                            (partial tag-is? end-tag-name)
                                            ast)
                  body (conj (vec body) end-node)]
-             (let [[s new-context] (template-tag (:tag-name node) body context)]
-               (concat (parse s new-context)
-                       (interpret-tags rest-ast new-context))))
-           (let [[s new-context] (template-tag (:tag-name node) [node] context)]
-             (concat (parse s new-context)
+             (let [[s-or-nodes new-context] (template-tag (:tag-name node) body
+                                                          context)]
+               (concat (if (string? s-or-nodes)
+                         (parse s-or-nodes new-context)
+                         (ast->parsed s-or-nodes new-context))
+                       (interpret-tags rest-ast context))))
+           (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
+                                                        context)]
+             (concat (if (string? s-or-nodes)
+                       (parse s-or-nodes new-context)
+                       (ast->parsed s-or-nodes new-context))
                      (interpret-tags (rest ast) new-context)))))
        (cons node (interpret-tags (rest ast) context))))))
 
 (defn parse-filters [ast context]
+
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :filter (:type node))
@@ -226,12 +234,20 @@
                        node))))
         (str sb)))))
 
-(defn parse [s context]
+(defn string->ast [s]
   (-> s
       lex
-      ast
+      ast))
+
+(defn ast->parsed [ast context]
+  (-> ast
       parse-tags
       (interpret-tags context)
       (parse-filters context)))
+
+(defn parse [s context]
+  (-> s
+      string->ast
+      (ast->parsed context)))
 
 (def render (comp realize parse))
