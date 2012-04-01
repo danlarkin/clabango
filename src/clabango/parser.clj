@@ -1,5 +1,6 @@
 (ns clabango.parser
-  (:use [clabango.filters :only [template-filter]]))
+  (:use [clabango.filters :only [template-filter]]
+        [clabango.tags :only [template-tag]]))
 
 (declare parse)
 
@@ -142,24 +143,58 @@
               :body token}
              (ast (rest tokens)))))))
 
-(defn load-template [template]
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource template)
-      slurp))
+(def valid-tags {"include" :inline
+                 "block" "endblock"})
 
-(defn parse-tags [ast context]
+(defn valid-tag? [tag-name]
+  (or (valid-tags tag-name)
+      (when-let [start-tag-name (second (re-find #"end(.*)" tag-name))]
+        (valid-tags start-tag-name))))
+
+(defn parse-tags [ast]
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :tag (:type node))
        (let [[tag & args] (.split (.trim (:token (:body node))) " ")]
-         (case tag
-           "include" (let [[template] args
-                           template (second (re-find #"\"(.*)\"" template))]
-                       (concat (parse (load-template template) context)
-                               (parse-tags (rest ast) context)))
+         (if (valid-tag? tag)
+           (cons (assoc node
+                   :tag-name tag
+                   :args args)
+                 (parse-tags (rest ast)))
            (throw (Exception. (str "unknown tag: " node)))))
-       (cons node (parse-tags (rest ast) context))))))
+       (cons node (parse-tags (rest ast)))))))
+
+(defn find-close-tag-for [tokens tag-name]
+  (let [[a b c & rest-tokens] tokens]
+    (if (and (= (:token a) :open-tag)
+             (string? (:token b))
+             (= (:token c) :close-tag))
+      [{:type :tag
+        :body b}
+       rest-tokens]
+      (throw (Exception. (str "parsing error after " a))))))
+
+(defn tag-is? [tag-name node]
+  (= (:tag-name node) tag-name))
+
+(defn interpret-tags [ast context]
+  (lazy-seq
+   (when-let [node (first ast)]
+     (if (= :tag (:type node))
+       (let [end-tag-name (valid-tag? (:tag-name node))]
+         (if-not (or (nil? end-tag-name)
+                     (= end-tag-name :inline))
+           (let [[body end-node rest-ast] (partition-by
+                                           (partial tag-is? end-tag-name)
+                                           ast)
+                 body (conj (vec body) end-node)]
+             (let [[s new-context] (template-tag (:tag-name node) body context)]
+               (concat (parse s new-context)
+                       (interpret-tags rest-ast new-context))))
+           (let [[s new-context] (template-tag (:tag-name node) [node] context)]
+             (concat (parse s new-context)
+                     (interpret-tags (rest ast) new-context)))))
+       (cons node (interpret-tags (rest ast) context))))))
 
 (defn parse-filters [ast context]
   (lazy-seq
@@ -186,14 +221,17 @@
           (do
             (.append sb (:token (:body node)))
             (recur (rest ast)))
-          (throw (Exception. "there should only be AST nodes of type :string")))
+          (throw (Exception.
+                  (str "there should only be AST nodes of type :string, got: "
+                       node))))
         (str sb)))))
 
 (defn parse [s context]
   (-> s
       lex
       ast
-      (parse-tags context)
+      parse-tags
+      (interpret-tags context)
       (parse-filters context)))
 
 (def render (comp realize parse))
