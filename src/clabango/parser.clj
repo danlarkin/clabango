@@ -259,12 +259,13 @@
   (let [sb (StringBuilder.)]
     (loop [ast ast]
       (if-let [node (first ast)]
-        (if (= :string (:type node))
-          (do
-            (.append sb (:token (:body node)))
-            (recur (rest ast)))
+        (case (:type node)
+          :string (do
+                    (.append sb (:token (:body node)))
+                    (recur (rest ast)))
+          :noop (recur (rest ast))
           (throw (Exception.
-                  (str "there should only be AST nodes of type :string, got: "
+                  (str "there should only be AST nodes of type :string and :noop, got: "
                        node))))
         (str sb)))))
 

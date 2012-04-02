@@ -26,8 +26,12 @@
 
 (defmethod template-tag "block" [_ nodes context]
   (let [block-name (first (:args (first nodes)))]
-    [(for [node (rest (butlast nodes))]
-       (assoc node :block-name block-name))
+    [(let [body-nodes (rest (butlast nodes))]
+       (if (seq body-nodes)
+         (for [node body-nodes]
+           (assoc node :block-name block-name))
+         [{:block-name block-name
+           :type :noop}]))
      (assoc context :foo 42)]))
 
 (defmethod template-tag "extends" [_ nodes context]
