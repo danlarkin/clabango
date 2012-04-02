@@ -1,6 +1,6 @@
 (ns clabango.parser
   (:use [clabango.filters :only [template-filter]]
-        [clabango.tags :only [template-tag]]))
+        [clabango.tags :only [load-template template-tag]]))
 
 (declare parse ast->parsed)
 
@@ -286,3 +286,8 @@
       (ast->parsed context)))
 
 (def render (comp realize parse))
+
+(defn render-file [filename context]
+  (-> filename
+      load-template
+      (render context)))
