@@ -185,10 +185,11 @@
        (let [end-tag-name (valid-tag? (:tag-name node))]
          (if-not (or (nil? end-tag-name)
                      (= end-tag-name :inline))
-           (let [[body end-node rest-ast] (partition-by
-                                           (partial tag-is? end-tag-name)
-                                           ast)
-                 body (conj (vec body) end-node)]
+           (let [[body end-node & rest-ast] (partition-by
+                                             (partial tag-is? end-tag-name)
+                                             ast)
+                 body (conj (vec body) end-node)
+                 rest-ast (flatten rest-ast)]
              (let [[s-or-nodes new-context] (template-tag (:tag-name node) body
                                                           context)]
                (concat (if (string? s-or-nodes)
