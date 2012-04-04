@@ -1,10 +1,11 @@
-(ns clabango.tags)
+(ns clabango.tags
+  (:use [clojure.java.io :only [file]]))
 
 (defn load-template [template]
   (-> (Thread/currentThread)
       (.getContextClassLoader)
       (.getResource template)
-      slurp))
+      file))
 
 ;; template-tag must return a 2-vector of [string context]
 ;; where string will be parsed and context will be the new
@@ -32,7 +33,7 @@
            (assoc node :block-name block-name))
          [{:block-name block-name
            :type :noop}]))
-     (assoc context :foo 42)]))
+     context]))
 
 (defmethod template-tag "extends" [_ nodes context]
   (let [[s context] (template-tag "include" nodes context)]

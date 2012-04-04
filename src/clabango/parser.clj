@@ -4,9 +4,12 @@
 
 (declare parse ast->parsed)
 
-(defn lex [s]
+(defn lex [string-or-file]
   ;; this is a doozy, eh?
-  (let [max (.length s)
+  (let [[s fileref] (if (string? string-or-file)
+                      [string-or-file "UNKNOWN"]
+                      [(slurp string-or-file) string-or-file])
+        max (.length s)
         sb (StringBuilder.)]
     (loop [result []
            started 1
@@ -15,6 +18,7 @@
         (if (zero? (.length sb))
           result
           (conj result {:started started
+                        :file fileref
                         :token (str sb)}))
         (let [c (.charAt s i)]
           (if (>= (inc i) max)
@@ -33,11 +37,14 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :file fileref
                                                  :token :open-filter})
                                    (vec (concat result
                                                 [{:started started
+                                                  :file fileref
                                                   :token s}
                                                  {:started new-started
+                                                  :file fileref
                                                   :token :open-filter}])))
                                  (+ 2 new-started)
                                  ni))
@@ -47,10 +54,13 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :file fileref
                                                  :token :open-tag})
                                    (vec (concat result [{:started started
+                                                         :file fileref
                                                          :token s}
                                                         {:started new-started
+                                                         :file fileref
                                                          :token :open-tag}])))
                                  (+ 2 new-started)
                                  ni))
@@ -69,11 +79,14 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :file fileref
                                                  :token :close-filter})
                                    (vec (concat result
                                                 [{:started started
+                                                  :file fileref
                                                   :token s}
                                                  {:started new-started
+                                                  :file fileref
                                                   :token :close-filter}])))
                                  (+ 2 new-started)
                                  ni))
@@ -92,10 +105,13 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :file fileref
                                                  :token :close-tag})
                                    (vec (concat result [{:started started
+                                                         :file fileref
                                                          :token s}
                                                         {:started new-started
+                                                         :file fileref
                                                          :token :close-tag}])))
                                  (+ 2 new-started)
                                  ni))
@@ -192,13 +208,13 @@
                  rest-ast (flatten rest-ast)]
              (let [[s-or-nodes new-context] (template-tag (:tag-name node) body
                                                           context)]
-               (concat (if (string? s-or-nodes)
+               (concat (if-not (coll? s-or-nodes)
                          (parse s-or-nodes new-context)
                          (ast->parsed s-or-nodes new-context))
                        (interpret-tags rest-ast context))))
            (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
                                                         context)]
-             (concat (if (string? s-or-nodes)
+             (concat (if-not (coll? s-or-nodes)
                        (parse s-or-nodes new-context)
                        (ast->parsed s-or-nodes new-context))
                      (interpret-tags (rest ast) new-context)))))
