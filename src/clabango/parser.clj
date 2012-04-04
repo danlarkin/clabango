@@ -4,180 +4,81 @@
 
 (declare parse ast->parsed)
 
+(defn start-of-new-token? [s i]
+  (let [c (.charAt s i)
+        nc (try
+             (.charAt s (inc i))
+             (catch StringIndexOutOfBoundsException _))]
+    (or (= c \newline)
+        (and (= c \{)
+             (or (= nc \{)
+                 (= nc \%)))
+        (and (= c \%)
+             (= nc \}))
+        (and (= c \})
+             (= nc \})))))
+
+(defn buffer-string [s fileref i max offset line]
+  (let [sb (StringBuffer.)]
+    (loop [ni i]
+      (if (or (>= ni max)
+              (start-of-new-token? s ni))
+        (cons {:token (str sb)
+               :offset offset
+               :line line
+               :file fileref}
+              (lex* s fileref ni max (+ offset (- ni i)) line))
+        (do
+          (.append sb (.charAt s ni))
+          (recur (inc ni)))))))
+
+(defn lex* [s fileref i max offset line]
+  (lazy-seq
+   (when (< i max)
+     (let [c (.charAt s i)
+           nc (try
+                (.charAt s (inc i))
+                (catch StringIndexOutOfBoundsException _))]
+       (case c
+         \{ (case nc
+              \{ (cons {:token :open-filter
+                        :offset offset
+                        :line line
+                        :file fileref}
+                       (lex* s fileref (+ i 2) max (+ offset 2) line))
+              \% (cons {:token :open-tag
+                        :offset offset
+                        :line line
+                        :file fileref}
+                       (lex* s fileref (+ i 2) max (+ offset 2) line))
+              (buffer-string s fileref i max offset line))
+         \} (case nc
+              \} (cons {:token :close-filter
+                        :offset offset
+                        :line line
+                        :file fileref}
+                       (lex* s fileref (+ i 2) max (+ offset 2) line))
+              (buffer-string s fileref i max offset line))
+         \% (case nc
+              \} (cons {:token :close-tag
+                        :offset offset
+                        :line line
+                        :file fileref}
+                       (lex* s fileref (+ i 2) max (+ offset 2) line))
+              (buffer-string s fileref i max offset line))
+         \newline (cons {:token "\n"
+                         :offset offset
+                         :line line
+                         :file fileref}
+                        (lex* s fileref (inc i) max 1 (inc line)))
+         (buffer-string s fileref i max offset line))))))
+
 (defn lex [string-or-file]
-  ;; this is a doozy, eh?
   (let [[s fileref] (if (string? string-or-file)
                       [string-or-file "UNKNOWN"]
                       [(slurp string-or-file) string-or-file])
-        max (.length s)
-        sb (StringBuilder.)]
-    (loop [result []
-           started 1
-           line 1
-           i 0]
-      (if (>= i max)
-        (if (zero? (.length sb))
-          result
-          (conj result {:started started
-                        :line line
-                        :file fileref
-                        :token (str sb)}))
-        (let [c (.charAt s i)]
-          (if (>= (inc i) max)
-            (do
-              (.append sb c)
-              (recur result
-                     started
-                     line
-                     (inc i)))
-            (case c
-              \{ (let [ni (+ 2 i)
-                       nc (.charAt s (inc i))]
-                   (case nc
-                     \{ (let [s (str sb)
-                              slen (.length sb)
-                              new-started (+ started slen)]
-                          (.delete sb 0 slen)
-                          (recur (if (zero? slen)
-                                   (conj result {:started new-started
-                                                 :line line
-                                                 :file fileref
-                                                 :token :open-filter})
-                                   (vec (concat result
-                                                [{:started started
-                                                  :line line
-                                                  :file fileref
-                                                  :token s}
-                                                 {:started new-started
-                                                  :line line
-                                                  :file fileref
-                                                  :token :open-filter}])))
-                                 (+ 2 new-started)
-                                 line
-                                 ni))
-                     \% (let [s (str sb)
-                              slen (.length sb)
-                              new-started (+ started slen)]
-                          (.delete sb 0 slen)
-                          (recur (if (zero? slen)
-                                   (conj result {:started new-started
-                                                 :line line
-                                                 :file fileref
-                                                 :token :open-tag})
-                                   (vec (concat result [{:started started
-                                                         :line line
-                                                         :file fileref
-                                                         :token s}
-                                                        {:started new-started
-                                                         :line line
-                                                         :file fileref
-                                                         :token :open-tag}])))
-                                 (+ 2 new-started)
-                                 line
-                                 ni))
-                     \newline (do
-                                (.append sb c)
-                                (.append sb nc)
-                                (recur result
-                                       1
-                                       (inc line)
-                                       ni))
-                     (do
-                       (.append sb c)
-                       (.append sb nc)
-                       (recur result
-                              started
-                              line
-                              ni))))
-              \} (let [ni (+ 2 i)
-                       nc (.charAt s (inc i))]
-                   (case nc
-                     \} (let [s (str sb)
-                              slen (.length sb)
-                              new-started (+ started slen)]
-                          (.delete sb 0 slen)
-                          (recur (if (zero? slen)
-                                   (conj result {:started new-started
-                                                 :line line
-                                                 :file fileref
-                                                 :token :close-filter})
-                                   (vec (concat result
-                                                [{:started started
-                                                  :line line
-                                                  :file fileref
-                                                  :token s}
-                                                 {:started new-started
-                                                  :line line
-                                                  :file fileref
-                                                  :token :close-filter}])))
-                                 (+ 2 new-started)
-                                 line
-                                 ni))
-                     \newline (do
-                                (.append sb c)
-                                (.append sb nc)
-                                (recur result
-                                       1
-                                       (inc line)
-                                       ni))
-                     (do
-                       (.append sb c)
-                       (.append sb nc)
-                       (recur result
-                              started
-                              line
-                              ni))))
-              \% (let [ni (+ 2 i)
-                       nc (.charAt s (inc i))]
-                   (case nc
-                     \} (let [s (str sb)
-                              slen (.length sb)
-                              new-started (+ started slen)]
-                          (.delete sb 0 slen)
-                          (recur (if (zero? slen)
-                                   (conj result {:started new-started
-                                                 :line line
-                                                 :file fileref
-                                                 :token :close-tag})
-                                   (vec (concat result [{:started started
-                                                         :line line
-                                                         :file fileref
-                                                         :token s}
-                                                        {:started new-started
-                                                         :line line
-                                                         :file fileref
-                                                         :token :close-tag}])))
-                                 (+ 2 new-started)
-                                 line
-                                 ni))
-                     \newline (do
-                                (.append sb c)
-                                (.append sb nc)
-                                (recur result
-                                       1
-                                       (inc line)
-                                       ni))
-                     (do
-                       (.append sb c)
-                       (.append sb nc)
-                       (recur result
-                              started
-                              line
-                              ni))))
-              \newline (do
-                         (.append sb c)
-                         (prn :newline)
-                         (recur result
-                                1
-                                (inc line)
-                                (inc i)))
-              (do
-                (.append sb c)
-                (prn c)
-                (recur result
-                       started
-                       line
-                       (inc i))))))))))
+        max (.length s)]
+    (lex* s fileref 0 max 1 1)))
 
 (defn find-close-filter [tokens]
   (let [[a b c & rest-tokens] tokens]
