@@ -13,11 +13,13 @@
         sb (StringBuilder.)]
     (loop [result []
            started 1
+           line 1
            i 0]
       (if (>= i max)
         (if (zero? (.length sb))
           result
           (conj result {:started started
+                        :line line
                         :file fileref
                         :token (str sb)}))
         (let [c (.charAt s i)]
@@ -26,6 +28,7 @@
               (.append sb c)
               (recur result
                      started
+                     line
                      (inc i)))
             (case c
               \{ (let [ni (+ 2 i)
@@ -37,16 +40,20 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :line line
                                                  :file fileref
                                                  :token :open-filter})
                                    (vec (concat result
                                                 [{:started started
+                                                  :line line
                                                   :file fileref
                                                   :token s}
                                                  {:started new-started
+                                                  :line line
                                                   :file fileref
                                                   :token :open-filter}])))
                                  (+ 2 new-started)
+                                 line
                                  ni))
                      \% (let [s (str sb)
                               slen (.length sb)
@@ -54,21 +61,33 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :line line
                                                  :file fileref
                                                  :token :open-tag})
                                    (vec (concat result [{:started started
+                                                         :line line
                                                          :file fileref
                                                          :token s}
                                                         {:started new-started
+                                                         :line line
                                                          :file fileref
                                                          :token :open-tag}])))
                                  (+ 2 new-started)
+                                 line
                                  ni))
+                     \newline (do
+                                (.append sb c)
+                                (.append sb nc)
+                                (recur result
+                                       1
+                                       (inc line)
+                                       ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
                               started
+                              line
                               ni))))
               \} (let [ni (+ 2 i)
                        nc (.charAt s (inc i))]
@@ -79,22 +98,34 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :line line
                                                  :file fileref
                                                  :token :close-filter})
                                    (vec (concat result
                                                 [{:started started
+                                                  :line line
                                                   :file fileref
                                                   :token s}
                                                  {:started new-started
+                                                  :line line
                                                   :file fileref
                                                   :token :close-filter}])))
                                  (+ 2 new-started)
+                                 line
                                  ni))
+                     \newline (do
+                                (.append sb c)
+                                (.append sb nc)
+                                (recur result
+                                       1
+                                       (inc line)
+                                       ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
                               started
+                              line
                               ni))))
               \% (let [ni (+ 2 i)
                        nc (.charAt s (inc i))]
@@ -105,26 +136,47 @@
                           (.delete sb 0 slen)
                           (recur (if (zero? slen)
                                    (conj result {:started new-started
+                                                 :line line
                                                  :file fileref
                                                  :token :close-tag})
                                    (vec (concat result [{:started started
+                                                         :line line
                                                          :file fileref
                                                          :token s}
                                                         {:started new-started
+                                                         :line line
                                                          :file fileref
                                                          :token :close-tag}])))
                                  (+ 2 new-started)
+                                 line
                                  ni))
+                     \newline (do
+                                (.append sb c)
+                                (.append sb nc)
+                                (recur result
+                                       1
+                                       (inc line)
+                                       ni))
                      (do
                        (.append sb c)
                        (.append sb nc)
                        (recur result
                               started
+                              line
                               ni))))
+              \newline (do
+                         (.append sb c)
+                         (prn :newline)
+                         (recur result
+                                1
+                                (inc line)
+                                (inc i)))
               (do
                 (.append sb c)
+                (prn c)
                 (recur result
                        started
+                       line
                        (inc i))))))))))
 
 (defn find-close-filter [tokens]
@@ -264,11 +316,11 @@
        (let [var-and-filter (.trim (:token (:body node)))
              [var filter-name] (rest (re-find #"(.*)\|(.*)" var-and-filter))]
          (cons {:type :string
-                :body {:started (:started (:body node))
-                       :token (if filter-name
-                                (template-filter filter-name
-                                                 (str (context (keyword var))))
-                                (str (context (keyword var-and-filter))))}}
+                :body (assoc (:body node)
+                        :token (if filter-name
+                                 (template-filter filter-name
+                                                  (str (context (keyword var))))
+                                 (str (context (keyword var-and-filter)))))}
                (parse-filters (rest ast) context)))
        (cons node (parse-filters (rest ast) context))))))
 
