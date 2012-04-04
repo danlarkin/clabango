@@ -2,7 +2,7 @@
   (:use [clabango.filters :only [template-filter]]
         [clabango.tags :only [load-template template-tag]]))
 
-(declare parse ast->parsed)
+(declare lex* parse ast->parsed)
 
 (defn start-of-new-token? [s i]
   (let [c (.charAt s i)
