@@ -123,5 +123,11 @@
              (str "new foo!\n"
                   "new bar 12 47\n"))))))
 
+(deftest test-if
+  (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
+     "foo is true")
+  (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
+     ""))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))

@@ -114,6 +114,7 @@
 
 (def valid-tags {"extends" :inline
                  "include" :inline
+                 "if" "endif"
                  "with-foo-as-42" "endwith"
                  "block" "endblock"})
 

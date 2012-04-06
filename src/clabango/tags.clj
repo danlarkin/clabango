@@ -46,5 +46,15 @@
     [s
      (assoc context :extended true)]))
 
+(defmethod template-tag "if" [_ nodes context]
+  (let [if-node (first nodes)
+        decision (first (:args if-node))
+        body-nodes (rest (butlast nodes))]
+    [(if (context (keyword decision))
+       body-nodes
+       [{:body (dissoc (:body if-node) :token)
+         :type :noop}])
+     context]))
+
 (defmethod template-tag "with-foo-as-42" [_ nodes context]
   [(rest (butlast nodes)) (assoc context :foo 42)])
