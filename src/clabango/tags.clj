@@ -36,6 +36,8 @@
              :block-metadata (select-keys (:body block-node)
                                           #{:offset :line :file})))
          [{:block-name block-name
+           :block-metadata (select-keys (:body block-node)
+                                        #{:offset :line :file})
            :type :noop}]))
      context]))
 

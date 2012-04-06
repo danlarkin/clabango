@@ -93,6 +93,12 @@
                       "1234{%block foo%}override {{bar}} {%endblock%}")
                  {:bar "BAR"})
          "override BAR 1234"))
+  (testing "empty overrides should work"
+    (is (= (render (str "{% block foo%}default {{bar}}{%endblock%}"
+                        "{% block bar%}default bar{%endblock%}"
+                        "{%block foo%}{%endblock%}{%block bar%}{%endblock%}")
+                   {:bar "BAR"})
+           "")))
   (testing "works when extending"
     (testing "override first block"
       (is (= (render (str "{% extends \"clabango/templates/blocks.html\" %}"
