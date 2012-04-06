@@ -26,11 +26,15 @@
      context]))
 
 (defmethod template-tag "block" [_ nodes context]
-  (let [block-name (first (:args (first nodes)))]
+  (let [block-node (first nodes)
+        block-name (first (:args block-node))]
     [(let [body-nodes (rest (butlast nodes))]
        (if (seq body-nodes)
          (for [node body-nodes]
-           (assoc node :block-name block-name))
+           (assoc node
+             :block-name block-name
+             :block-metadata (select-keys (:body block-node)
+                                          #{:offset :line :file})))
          [{:block-name block-name
            :type :noop}]))
      context]))

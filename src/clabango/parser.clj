@@ -163,46 +163,63 @@
                                                           context)]
                (concat (if-not (coll? s-or-nodes)
                          (parse s-or-nodes new-context)
-                         (ast->parsed s-or-nodes new-context))
+                         ;; TODO: determine if this reparsing is necessary?
+                         s-or-nodes #_(ast->parsed s-or-nodes new-context))
                        (interpret-tags rest-ast context))))
            (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
                                                         context)]
              (concat (if-not (coll? s-or-nodes)
                        (parse s-or-nodes new-context)
-                       (ast->parsed s-or-nodes new-context))
+                       s-or-nodes #_(ast->parsed s-or-nodes new-context))
                      (interpret-tags (rest ast) new-context)))))
        (cons node (interpret-tags (rest ast) context))))))
 
+(defn get-block-overrides [ast]
+  (loop [ast ast
+         current-block-metadata {}
+         block-overrides {}
+         block-metadata {}]
+    (if-let [node (first ast)]
+      (if-let [block-name (:block-name node)]
+        (if (and (block-overrides block-name)
+                 (= (:block-metadata node) current-block-metadata))
+          (recur (rest ast)
+                 current-block-metadata
+                 (update-in block-overrides [block-name] conj node)
+                 block-metadata)
+          (recur (rest ast)
+                 (:block-metadata node)
+                 (assoc block-overrides block-name [node])
+                 (assoc block-metadata block-name (:block-metadata node))))
+        (recur (rest ast)
+               current-block-metadata
+               block-overrides
+               block-metadata))
+      [block-overrides block-metadata])))
+
 (defn reduce-blocks [ast]
-  ;; TODO: omg this is complicated
-  (let [used-blocks (loop [result ()
-                           ast (reverse ast)
-                           used-blocks {}]
-                      (if-let [node (first ast)]
-                        (if-let [block-name (:block-name node)]
-                          (if (used-blocks block-name)
-                            (recur result
-                                   (rest ast)
-                                   used-blocks)
-                            (recur (cons node result)
-                                   (rest ast)
-                                   (assoc used-blocks block-name node)))
-                          (recur (cons node result)
-                                 (rest ast)
-                                 used-blocks))
-                        used-blocks))]
+  (let [[block-overrides block-metadata] (get-block-overrides ast)]
     (loop [result []
            ast ast
            filled-blocks #{}]
       (if-let [node (first ast)]
         (if-let [block-name (:block-name node)]
-          (if (filled-blocks block-name)
+          (if (block-overrides block-name)
+            (if-not (filled-blocks block-name)
+              (if-not (= (:block-metadata node) (block-metadata block-name))
+                (let [replacement-nodes (block-overrides block-name)]
+                  (recur (vec (concat result replacement-nodes))
+                         (rest ast)
+                         (conj filled-blocks block-name)))
+                (recur (conj result node)
+                       (rest ast)
+                       filled-blocks))
+              (recur result
+                     (rest ast)
+                     filled-blocks))
             (recur result
                    (rest ast)
-                   used-blocks)
-            (recur (conj result (used-blocks block-name))
-                   (rest ast)
-                   (conj filled-blocks block-name)))
+                   filled-blocks))
           (recur (conj result node)
                  (rest ast)
                  filled-blocks))
@@ -216,12 +233,13 @@
        ;; the alternative is leaving them as strings?
        (let [var-and-filter (.trim (:token (:body node)))
              [var filter-name] (rest (re-find #"(.*)\|(.*)" var-and-filter))]
-         (cons {:type :string
-                :body (assoc (:body node)
-                        :token (if filter-name
-                                 (template-filter filter-name
-                                                  (str (context (keyword var))))
-                                 (str (context (keyword var-and-filter)))))}
+         (cons (-> node
+                   (assoc :type :string)
+                   (assoc-in [:body :token]
+                             (if filter-name
+                               (template-filter filter-name
+                                                (str (context (keyword var))))
+                               (str (context (keyword var-and-filter))))))
                (parse-filters (rest ast) context)))
        (cons node (parse-filters (rest ast) context))))))
 
@@ -235,7 +253,8 @@
                     (recur (rest ast)))
           :noop (recur (rest ast))
           (throw (Exception.
-                  (str "there should only be AST nodes of type :string and :noop, got: "
+                  (str "there should only be AST nodes of type"
+                       " :string and :noop, got: "
                        node))))
         (str sb)))))
 

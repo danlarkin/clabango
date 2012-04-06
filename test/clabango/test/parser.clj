@@ -88,5 +88,34 @@
     (is (= (render s {:foo 42 :name "Dan"})
            "42\n dogs live in the park. Hello, Dan!\n"))))
 
+(deftest test-block-overriding
+  (is (= (render (str "{% block foo%}default {{bar}}{%endblock%}"
+                      "1234{%block foo%}override {{bar}} {%endblock%}")
+                 {:bar "BAR"})
+         "override BAR 1234"))
+  (testing "works when extending"
+    (testing "override first block"
+      (is (= (render (str "{% extends \"clabango/templates/blocks.html\" %}"
+                          "{% block foo %}overriding foo now{% endblock %}")
+                     {:foo 12
+                      :bar 47})
+             (str "overriding foo now\n"
+                  "Here's the default text of bar 47\n"))))
+    (testing "override second block"
+      (is (= (render (str "{% extends \"clabango/templates/blocks.html\" %}"
+                          "{% block bar %}override {{foo}}{% endblock %}")
+                     {:foo 12
+                      :bar 47})
+             (str "Here's the default text of foo 12\n"
+                  "override 12\n"))))
+    (testing "override both blocks"
+      (is (= (render (str "{% extends \"clabango/templates/blocks.html\" %}"
+                          "{% block foo %}new foo!{% endblock %}"
+                          "{% block bar %}new bar {{foo}} {{bar}}{% endblock %}")
+                     {:foo 12
+                      :bar 47})
+             (str "new foo!\n"
+                  "new bar 12 47\n"))))))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
