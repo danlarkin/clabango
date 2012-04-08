@@ -1,3 +1,3 @@
-(defproject clabango "1.0.0-SNAPSHOT"
-  :description "FIXME: write description"
+(defproject clabango "0.1-SNAPSHOT"
+  :description "templating language?"
   :dependencies [[org.clojure/clojure "1.2.1"]])
