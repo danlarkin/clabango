@@ -142,8 +142,30 @@
        rest-tokens]
       (throw (Exception. (str "parsing error after " a))))))
 
-(defn tag-is? [tag-name node]
-  (= (:tag-name node) tag-name))
+(defn find-body [end-tag-name ast]
+  (let [start-tag-name (:tag-name (first ast))]
+    (loop [i -1 ;; first tag is the opener so start "one down"
+           body []
+           ast ast]
+      (when-let [node (first ast)]
+        (cond
+         (and (= (:tag-name node) end-tag-name) (zero? i))
+         [(conj body node) (rest ast)]
+
+         (= (:tag-name node) end-tag-name)
+         (recur (dec i)
+                (conj body node)
+                (rest ast))
+
+         (= (:tag-name node) start-tag-name)
+         (recur (inc i)
+                (conj body node)
+                (rest ast))
+
+         :default
+         (recur i
+                (conj body node)
+                (rest ast)))))))
 
 (defn interpret-tags [ast context]
   (lazy-seq
@@ -152,22 +174,18 @@
        (let [end-tag-name (valid-tag? (:tag-name node))]
          (if-not (or (nil? end-tag-name)
                      (= end-tag-name :inline))
-           (let [[body end-node & rest-ast] (partition-by
-                                             (partial tag-is? end-tag-name)
-                                             ast)
-                 body (conj (vec body) end-node)
-                 rest-ast (flatten rest-ast)]
-             (let [[s-or-nodes new-context] (template-tag (:tag-name node) body
-                                                          context)]
-               (concat (if-not (coll? s-or-nodes)
-                         (parse s-or-nodes new-context)
-                         ;; TODO: this will go all the way to realizing vars
-                         ;; which is probably too much, for instance if the
-                         ;; block tag wants to set something in the context
-                         ;; and then include another template, does realizing
-                         ;; vars here break that or make it possible?
-                         (ast->parsed s-or-nodes new-context))
-                       (interpret-tags rest-ast context))))
+           (let [[body rest-ast] (find-body end-tag-name ast)
+                 [s-or-nodes new-context] (template-tag (:tag-name node) body
+                                                        context)]
+             (concat (if-not (coll? s-or-nodes)
+                       (parse s-or-nodes new-context)
+                       ;; TODO: this will go all the way to realizing vars
+                       ;; which is probably too much, for instance if the
+                       ;; block tag wants to set something in the context
+                       ;; and then include another template, does realizing
+                       ;; vars here break that or make it possible?
+                       (ast->parsed s-or-nodes new-context))
+                     (interpret-tags rest-ast context)))
            (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
                                                         context)]
              (concat (if-not (coll? s-or-nodes)

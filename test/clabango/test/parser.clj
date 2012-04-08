@@ -123,11 +123,30 @@
              (str "new foo!\n"
                   "new bar 12 47\n"))))))
 
+(deftest test-nested-blocks
+  (is (= (render (str "{% block foo %}"
+                      "  foo1"
+                      "  {% block bar %}"
+                      "    bar1"
+                      "  {% endblock %}"
+                      "  foo2"
+                      "{% endblock %}")
+                 {})
+         "  foo1      bar1    foo2")))
+
 (deftest test-if
-  (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
-     "foo is true")
-  (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
-     ""))
+  (is (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
+         "foo is true"))
+  (is (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
+         "")))
+
+(deftest test-nested-if
+  (is (= (render (str "{% if foo %}before bar {% if bar %}"
+                      "foo & bar are true"
+                      "{% endif %} after bar{% endif %}")
+                 {:foo true
+                  :bar true})
+         "before bar foo & bar are true after bar")))
 
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
