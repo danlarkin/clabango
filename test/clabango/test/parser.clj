@@ -148,5 +148,17 @@
                   :bar true})
          "before bar foo & bar are true after bar")))
 
+(deftest test-ifequal
+  (is (= (render "{% ifequal foo \"foo\" %}yez{% endifequal %}" {:foo "foo"})
+         "yez"))
+  (is (= (render "{% ifequal foo \"foo\" bar %}yez{% endifequal %}"
+                 {:foo "foo"
+                  :bar "foo"})
+         "yez"))
+  (is (= (render "{% ifequal foo \"foo\" bar %}yez{% endifequal %}"
+                 {:foo "foo"
+                  :bar "bar"})
+         "")))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))

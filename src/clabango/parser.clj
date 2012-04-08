@@ -123,7 +123,8 @@
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :tag (:type node))
-       (let [[tag & args] (.split (.trim (:token (:body node))) " ")]
+       (let [[tag & args] (map first (re-seq #"[^\s\"']+|\"([^\"]*)\"|'([^']*)'"
+                                             (.trim (:token (:body node)))))]
          (if (valid-tag? tag)
            (cons (assoc node
                    :tag-name tag
