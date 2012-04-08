@@ -164,14 +164,18 @@
                                                           context)]
                (concat (if-not (coll? s-or-nodes)
                          (parse s-or-nodes new-context)
-                         ;; TODO: determine if this reparsing is necessary?
-                         s-or-nodes #_(ast->parsed s-or-nodes new-context))
+                         ;; TODO: this will go all the way to realizing vars
+                         ;; which is probably too much, for instance if the
+                         ;; block tag wants to set something in the context
+                         ;; and then include another template, does realizing
+                         ;; vars here break that or make it possible?
+                         (ast->parsed s-or-nodes new-context))
                        (interpret-tags rest-ast context))))
            (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
                                                         context)]
              (concat (if-not (coll? s-or-nodes)
                        (parse s-or-nodes new-context)
-                       s-or-nodes #_(ast->parsed s-or-nodes new-context))
+                       (ast->parsed s-or-nodes new-context))
                      (interpret-tags (rest ast) new-context)))))
        (cons node (interpret-tags (rest ast) context))))))
 
