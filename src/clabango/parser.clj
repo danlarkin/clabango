@@ -1,6 +1,6 @@
 (ns clabango.parser
   (:use [clabango.filters :only [template-filter]]
-        [clabango.tags :only [load-template template-tag]]))
+        [clabango.tags :only [load-template template-tag valid-tags]]))
 
 (declare lex* parse ast->parsed)
 
@@ -112,15 +112,12 @@
               :body token}
              (ast (rest tokens)))))))
 
-(def valid-tags {"extends" :inline
-                 "include" :inline
-                 "if" "endif"
-                 "with-foo-as-42" "endwith"
-                 "block" "endblock"})
-
 (defn valid-tag? [tag-name]
-  (or (valid-tags tag-name)
-      ((clojure.set/difference (set (vals valid-tags)) #{:inline}) tag-name)))
+  (let [valid-tags-snapshot @valid-tags]
+    (or (valid-tags-snapshot tag-name)
+        ((clojure.set/difference (set (vals valid-tags-snapshot))
+                                 #{:inline})
+         tag-name))))
 
 (defn parse-tags [ast]
   (lazy-seq

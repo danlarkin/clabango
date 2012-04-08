@@ -16,16 +16,31 @@
 ;; tags need to keep track of state and the context is the
 ;; logical place to do that (rather than a ref or atom)
 
+(def valid-tags (atom {}))
+
+(defn fix-args
+  [fn-tail]
+  (let [[f & r] fn-tail]
+    `(~(vec (cons '_ f))
+      ~@r)))
+
+(defmacro deftemplatetag [open-tag & args]
+  (let [[close-tag fn-tail] (if (string? (first args))
+                              [(first args) (rest args)]
+                              [:inline args])]
+    (swap! valid-tags assoc open-tag close-tag)
+    `(defmethod template-tag ~open-tag ~@(fix-args fn-tail))))
+
 (defmulti template-tag (fn [tag-name & _] tag-name))
 
-(defmethod template-tag "include" [_ nodes context]
+(deftemplatetag "include" [nodes context]
   (let [[node] nodes
         [template] (:args node)
         template (second (re-find #"\"(.*)\"" template))]
     [(load-template template)
      context]))
 
-(defmethod template-tag "block" [_ nodes context]
+(deftemplatetag "block" "endblock" [nodes context]
   (let [block-node (first nodes)
         block-name (first (:args block-node))]
     [(let [body-nodes (rest (butlast nodes))]
@@ -41,12 +56,12 @@
            :type :noop}]))
      context]))
 
-(defmethod template-tag "extends" [_ nodes context]
+(deftemplatetag "extends" [nodes context]
   (let [[s context] (template-tag "include" nodes context)]
     [s
      (assoc context :extended true)]))
 
-(defmethod template-tag "if" [_ nodes context]
+(deftemplatetag "if" "endif" [nodes context]
   (let [if-node (first nodes)
         decision (first (:args if-node))
         body-nodes (rest (butlast nodes))]
@@ -55,6 +70,3 @@
        [{:body (dissoc (:body if-node) :token)
          :type :noop}])
      context]))
-
-(defmethod template-tag "with-foo-as-42" [_ nodes context]
-  [(rest (butlast nodes)) (assoc context :foo 42)])
