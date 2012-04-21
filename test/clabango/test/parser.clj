@@ -165,5 +165,11 @@
                  {:foo [1 2 3]})
          "<<1>><<2>><<3>>")))
 
+(deftest test-map-lookup
+  (is (= (render "{{foo}}" {:foo {:bar 42}})
+         "{:bar 42}"))
+  (is (= (render "{{foo.bar}}" {:foo {:bar 42}})
+         "42")))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))

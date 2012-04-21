@@ -1,5 +1,5 @@
 (ns clabango.parser
-  (:use [clabango.filters :only [template-filter]]
+  (:use [clabango.filters :only [context-lookup template-filter]]
         [clabango.tags :only [load-template template-tag valid-tags]]))
 
 (declare lex* parse ast->parsed)
@@ -250,17 +250,15 @@
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :filter (:type node))
-       ;; TODO: is turning var lookups into keywords a good idea?
-       ;; the alternative is leaving them as strings?
        (let [var-and-filter (.trim (:token (:body node)))
              [var filter-name] (rest (re-find #"(.*)\|(.*)" var-and-filter))]
          (cons (-> node
                    (assoc :type :string)
                    (assoc-in [:body :token]
                              (if filter-name
-                               (template-filter filter-name
-                                                (str (context (keyword var))))
-                               (str (context (keyword var-and-filter))))))
+                               (template-filter
+                                filter-name (str (context-lookup context var)))
+                               (str (context-lookup context var-and-filter)))))
                (parse-filters (rest ast) context)))
        (cons node (parse-filters (rest ast) context))))))
 

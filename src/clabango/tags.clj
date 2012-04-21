@@ -1,5 +1,6 @@
 (ns clabango.tags
-  (:use [clojure.java.io :only [file]]))
+  (:use [clojure.java.io :only [file]]
+        [clabango.filters :only [context-lookup]]))
 
 (defn load-template [template]
   (-> (Thread/currentThread)
@@ -63,7 +64,7 @@
   (let [if-node (first nodes)
         decision (first (:args if-node))
         body-nodes (rest (butlast nodes))]
-    {:nodes (if (context (keyword decision))
+    {:nodes (if (context-lookup context decision)
               body-nodes
               [{:body (dissoc (:body if-node) :token)
                 :type :noop}])}))
@@ -75,7 +76,7 @@
     {:nodes (if (apply = (for [op operands]
                            (if (= \" (.charAt op 0))
                              (subs op 1 (dec (count op)))
-                             (context (keyword op)))))
+                             (context-lookup context op))))
               body-nodes
               [{:body (dissoc (:body if-node) :token)
                 :type :noop}])}))
@@ -85,7 +86,7 @@
         [x in coll] (:args for-node)
         body-nodes (rest (butlast nodes))]
     (if (= in "in")
-      {:groups (for [ele (context (keyword coll))]
+      {:groups (for [ele (context-lookup context coll)]
                  {:nodes body-nodes
                   :context (assoc context (keyword x) ele)})}
       (throw (Exception. (str "syntax error in:" for-node))))))
