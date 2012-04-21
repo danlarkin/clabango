@@ -172,27 +172,27 @@
   (lazy-seq
    (when-let [node (first ast)]
      (if (= :tag (:type node))
-       (let [end-tag-name (valid-tag? (:tag-name node))]
-         (if-not (or (nil? end-tag-name)
-                     (= end-tag-name :inline))
-           (let [[body rest-ast] (find-body end-tag-name ast)
-                 [s-or-nodes new-context] (template-tag (:tag-name node) body
-                                                        context)]
-             (concat (if-not (coll? s-or-nodes)
-                       (parse s-or-nodes new-context)
-                       ;; TODO: this will go all the way to realizing vars
-                       ;; which is probably too much, for instance if the
-                       ;; block tag wants to set something in the context
-                       ;; and then include another template, does realizing
-                       ;; vars here break that or make it possible?
-                       (ast->parsed s-or-nodes new-context))
-                     (interpret-tags rest-ast context)))
-           (let [[s-or-nodes new-context] (template-tag (:tag-name node) [node]
-                                                        context)]
-             (concat (if-not (coll? s-or-nodes)
-                       (parse s-or-nodes new-context)
-                       (ast->parsed s-or-nodes new-context))
-                     (interpret-tags (rest ast) new-context)))))
+       (let [end-tag-name (valid-tag? (:tag-name node))
+             [body rest-ast] (if (or (nil? end-tag-name)
+                                     (= end-tag-name :inline))
+                               [[node]
+                                (rest ast)]
+                               (find-body end-tag-name ast))
+             tag-result (template-tag (:tag-name node) body context)]
+         (concat (cond
+                  (:string tag-result)
+                  (parse (:string tag-result)
+                         (:context tag-result context))
+
+                  (:nodes tag-result)
+                  (ast->parsed (:nodes tag-result)
+                               (:context tag-result context))
+
+                  (:groups tag-result)
+                  (apply concat (for [group (:groups tag-result)]
+                                  (ast->parsed (:nodes group)
+                                               (:context group context)))))
+                 (interpret-tags rest-ast context)))
        (cons node (interpret-tags (rest ast) context))))))
 
 (defn get-block-overrides [ast]

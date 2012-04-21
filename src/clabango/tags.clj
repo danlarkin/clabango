@@ -37,49 +37,45 @@
   (let [[node] nodes
         [template] (:args node)
         template (second (re-find #"\"(.*)\"" template))]
-    [(load-template template)
-     context]))
+    {:string (load-template template)}))
 
 (deftemplatetag "block" "endblock" [nodes context]
   (let [block-node (first nodes)
         block-name (first (:args block-node))]
-    [(let [body-nodes (rest (butlast nodes))]
-       (if (seq body-nodes)
-         (for [node body-nodes]
-           (assoc node
-             :block-name block-name
-             :block-metadata (select-keys (:body block-node)
-                                          #{:offset :line :file})))
-         [{:block-name block-name
-           :block-metadata (select-keys (:body block-node)
-                                        #{:offset :line :file})
-           :type :noop}]))
-     context]))
+    (let [body-nodes (rest (butlast nodes))]
+      {:nodes (if (seq body-nodes)
+                (for [node body-nodes]
+                  (assoc node
+                    :block-name block-name
+                    :block-metadata (select-keys (:body block-node)
+                                                 #{:offset :line :file})))
+                [{:block-name block-name
+                  :block-metadata (select-keys (:body block-node)
+                                               #{:offset :line :file})
+                  :type :noop}])})))
 
 (deftemplatetag "extends" [nodes context]
-  (let [[s context] (template-tag "include" nodes context)]
-    [s
-     (assoc context :extended true)]))
+  (let [{:keys [string]} (template-tag "include" nodes context)]
+    {:string string
+     :context (assoc context :extended true)}))
 
 (deftemplatetag "if" "endif" [nodes context]
   (let [if-node (first nodes)
         decision (first (:args if-node))
         body-nodes (rest (butlast nodes))]
-    [(if (context (keyword decision))
-       body-nodes
-       [{:body (dissoc (:body if-node) :token)
-         :type :noop}])
-     context]))
+    {:nodes (if (context (keyword decision))
+              body-nodes
+              [{:body (dissoc (:body if-node) :token)
+                :type :noop}])}))
 
 (deftemplatetag "ifequal" "endifequal" [nodes context]
   (let [if-node (first nodes)
         operands (:args if-node)
         body-nodes (rest (butlast nodes))]
-    [(if (apply = (for [op operands]
-                    (if (= \" (.charAt op 0))
-                      (subs op 1 (dec (count op)))
-                      (context (keyword op)))))
-       body-nodes
-       [{:body (dissoc (:body if-node) :token)
-         :type :noop}])
-     context]))
+    {:nodes (if (apply = (for [op operands]
+                           (if (= \" (.charAt op 0))
+                             (subs op 1 (dec (count op)))
+                             (context (keyword op)))))
+              body-nodes
+              [{:body (dissoc (:body if-node) :token)
+                :type :noop}])}))
