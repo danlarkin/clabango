@@ -160,5 +160,10 @@
                   :bar "bar"})
          "")))
 
+(deftest test-for
+  (is (= (render "{% for ele in foo %}<<{{ele}}>>{%endfor%}"
+                 {:foo [1 2 3]})
+         "<<1>><<2>><<3>>")))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))

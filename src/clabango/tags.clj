@@ -79,3 +79,13 @@
               body-nodes
               [{:body (dissoc (:body if-node) :token)
                 :type :noop}])}))
+
+(deftemplatetag "for" "endfor" [nodes context]
+  (let [for-node (first nodes)
+        [x in coll] (:args for-node)
+        body-nodes (rest (butlast nodes))]
+    (if (= in "in")
+      {:groups (for [ele (context (keyword coll))]
+                 {:nodes body-nodes
+                  :context (assoc context (keyword x) ele)})}
+      (throw (Exception. (str "syntax error in:" for-node))))))
