@@ -148,6 +148,12 @@
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
          "")))
 
+(deftest test-if-not
+  (is (= (render "{% if not foo %}foo is true{% endif %}" {:foo true})
+         ""))
+  (is (= (render "{% if not foo %}foo is true{% endif %}" {:foo false})
+         "foo is true")))
+
 (deftest test-nested-if
   (is (= (render (str "{% if foo %}before bar {% if bar %}"
                       "foo & bar are true"

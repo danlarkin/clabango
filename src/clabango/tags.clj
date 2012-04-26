@@ -55,9 +55,18 @@
 
 (deftemplatetag "if" "endif" [nodes context]
   (let [if-node (first nodes)
-        decision (first (:args if-node))
-        body-nodes (rest (butlast nodes))]
-    {:nodes (if (context-lookup context decision)
+        args (:args if-node)
+        body-nodes (rest (butlast nodes))
+        [flip decision] (cond (= 1 (count args))
+                              [identity (first args)]
+
+                              (and (= 2 (count args))
+                                   (= "not" (first args)))
+                              [not (second args)]
+
+                              :default (throw (Exception. (str "Syntax error: "
+                                                               if-node))))]
+    {:nodes (if (flip (context-lookup context decision))
               body-nodes
               [{:body (dissoc (:body if-node) :token)
                 :type :noop}])}))
