@@ -134,6 +134,14 @@
                  {})
          "  foo1      bar1    foo2")))
 
+(deftest extends-plus-include-inside-a-block
+  (is (= (render (str "{% extends \"clabango/templates/blocks.html\" %}"
+                      "{%block foo%}"
+                      "{% include \"clabango/templates/foo.html\" %}"
+                      "{% endblock %}")
+                 {:bar "BAR" :name "Dan"})
+         "Hello, Dan!\n\nHere's the default text of bar BAR\n")))
+
 (deftest test-if
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
          "foo is true"))

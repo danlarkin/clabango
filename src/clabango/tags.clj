@@ -8,14 +8,8 @@
       (.getResource template)
       file))
 
-;; template-tag must return a 2-vector of [string context]
-;; where string will be parsed and context will be the new
-;; context passed along to the rest of the pipeline
-;; (including parsing of string)
-
-;; the reason template-tag needs to return context is some
-;; tags need to keep track of state and the context is the
-;; logical place to do that (rather than a ref or atom)
+(defn get-block-status [context]
+  (::block-info context))
 
 (def valid-tags (atom {}))
 
@@ -38,22 +32,21 @@
   (let [[node] nodes
         [template] (:args node)
         template (second (re-find #"\"(.*)\"" template))]
-    {:string (load-template template)}))
+    {:string (load-template template)
+     :context context}))
 
 (deftemplatetag "block" "endblock" [nodes context]
   (let [block-node (first nodes)
-        block-name (first (:args block-node))]
+        block-name (first (:args block-node))
+        block-info {:block-name block-name
+                    :block-metadata (select-keys (:body block-node)
+                                                 #{:offset :line :file})}]
     (let [body-nodes (rest (butlast nodes))]
       {:nodes (if (seq body-nodes)
                 (for [node body-nodes]
-                  (assoc node
-                    :block-name block-name
-                    :block-metadata (select-keys (:body block-node)
-                                                 #{:offset :line :file})))
-                [{:block-name block-name
-                  :block-metadata (select-keys (:body block-node)
-                                               #{:offset :line :file})
-                  :type :noop}])})))
+                  (merge node block-info))
+                [(assoc block-info :type :noop)])
+       :context (assoc context ::block-info block-info)})))
 
 (deftemplatetag "extends" [nodes context]
   (let [{:keys [string]} (template-tag "include" nodes context)]

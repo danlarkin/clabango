@@ -1,6 +1,7 @@
 (ns clabango.parser
   (:use [clabango.filters :only [context-lookup template-filter]]
-        [clabango.tags :only [load-template template-tag valid-tags]]))
+        [clabango.tags :only [get-block-status load-template
+                              template-tag valid-tags]]))
 
 (declare lex* parse ast->parsed)
 
@@ -111,6 +112,11 @@
        (cons {:type :string
               :body token}
              (ast (rest tokens)))))))
+
+(defn reapply-block-status [ast context]
+  (let [block-status (get-block-status context)]
+    (for [node ast]
+      (merge node block-status))))
 
 (defn valid-tag? [tag-name]
   (let [valid-tags-snapshot @valid-tags]
@@ -284,6 +290,7 @@
 
 (defn ast->parsed [ast context]
   (-> ast
+      (reapply-block-status context)
       parse-tags
       (interpret-tags context)
       reduce-blocks
