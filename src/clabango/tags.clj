@@ -95,5 +95,7 @@
                                    :forloop {:first true})}
                        (for [ele (rest coll)]
                          {:nodes body-nodes
-                          :context (assoc context (keyword x) ele)}))})
+                          :context (assoc context
+                                     (keyword x) ele
+                                     :forloop {:first false})}))})
       (throw (Exception. (str "syntax error in:" for-node))))))

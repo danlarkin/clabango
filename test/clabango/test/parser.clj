@@ -185,5 +185,15 @@
   (is (= (render "{{foo.bar}}" {:foo {:bar 42}})
          "42")))
 
+(deftest nested-forloop-first
+  (is (= (render (str "{% for x in list1 %}"
+                      "{% for y in list2 %}"
+                      "{{x}}-{{y}}"
+                      "{% if forloop.first %}'{% endif %} "
+                      "{% endfor %}{% endfor %}")
+                 {:list1 '[a b c]
+                  :list2 '[1 2 3]})
+         "a-1' a-2 a-3 b-1' b-2 b-3 c-1' c-2 c-3 ")))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
