@@ -1,12 +1,10 @@
 (ns clabango.tags
-  (:use [clojure.java.io :only [file]]
-        [clabango.filters :only [context-lookup]]))
+  (:use [clabango.filters :only [context-lookup]]))
 
 (defn load-template [template]
   (-> (Thread/currentThread)
       (.getContextClassLoader)
-      (.getResource template)
-      file))
+      (.getResource template)))
 
 (defn get-block-status [context]
   (::block-info context))
