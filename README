@@ -1,0 +1,9 @@
+# clabango
+
+It's a templating library for clojure, I guess?
+
+***
+
+This library (its functionality, not its code) is modeled after Django's html templating capabilities.
+
+It's not (even close to) complete yet, but it does the job I needed. I'd love it if you send in some pull requests, though!

@@ -1,0 +1,3 @@
+* TODO
+** extending a template and having text outside a {% block %} tag puts that text at the bottom of the extended template
+** make sure the extends tag doesn't get used anywhere except the top of a file
