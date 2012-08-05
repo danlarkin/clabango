@@ -257,15 +257,24 @@
    (when-let [node (first ast)]
      (if (= :filter (:type node))
        (let [var-and-filter (.trim (:token (:body node)))
-             [var filter-name] (rest (re-find #"(.*)\|(.*)" var-and-filter))]
-         (cons (-> node
-                   (assoc :type :string)
-                   (assoc-in [:body :token]
-                             (if filter-name
-                               (template-filter
-                                filter-name (str (context-lookup context var)))
-                               (str (context-lookup context var-and-filter)))))
-               (parse-filters (rest ast) context)))
+             [var filter-name arg] (rest (re-find #"([^|]+)\|([^:]+):?(.+)?"
+                                                  var-and-filter))]
+         (if (and arg
+                  (not (and (.startsWith arg "\"")
+                            (.endsWith arg "\""))))
+           (throw (Exception. (str "filter arguments must be in quotes " node)))
+           (cons (-> node
+                     (assoc :type :string)
+                     (assoc-in
+                      [:body :token]
+                      (str (if filter-name
+                             (template-filter
+                              filter-name
+                              node
+                              (context-lookup context var)
+                              arg)
+                             (context-lookup context var-and-filter)))))
+                 (parse-filters (rest ast) context))))
        (cons node (parse-filters (rest ast) context))))))
 
 (defn realize [ast]

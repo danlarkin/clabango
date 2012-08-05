@@ -1,7 +1,8 @@
 (ns clabango.test.parser
   (:use [clojure.test]
         [clabango.parser]
-        [clabango.tags]))
+        [clabango.tags])
+  (:import (java.util Date)))
 
 (deftest lex-tests
   (is (= (lex "a b c d")
@@ -197,3 +198,10 @@
 
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
+
+(deftest filter-no-value
+  (is (= "" (render "{{f|upper}}" {}))))
+
+(deftest filter-date
+  (is (= "1970-01-01_00:00:00"
+         (render "{{f|date:\"yyyy-MM-dd_HH:mm:ss\"}}" {:f (Date. (long 0))}))))
