@@ -205,3 +205,19 @@
 (deftest filter-date
   (is (= "1970-01-01_00:00:00"
          (render "{{f|date:\"yyyy-MM-dd_HH:mm:ss\"}}" {:f (Date. (long 0))}))))
+
+(deftest filter-hash-md5
+  (is (= "acbd18db4cc2f85cedef654fccc4a4d8"
+         (render "{{f|hash:\"md5\"}}" {:f "foo"}))))
+
+(deftest filter-hash-sha512
+  (is (= (str "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d"
+              "0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19"
+              "594a7eb539453e1ed7")
+         (render "{{f|hash:\"sha512\"}}" {:f "foo"}))))
+
+(deftest filter-hash-invalid-hash
+  (is (thrown? Exception (render "{{f|hash:\"foo\"}}" {:f "foo"}))))
+
+(deftest filter-hash-no-hash-given
+  (is (thrown? Exception (render "{{f|hash}}" {:f "foo"}))))
