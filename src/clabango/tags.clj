@@ -1,5 +1,5 @@
 (ns clabango.tags
-  (:use [clabango.filters :only [context-lookup]]))
+  (:require [clabango.filters :refer [context-lookup]]))
 
 (defn load-template [template]
   (-> (Thread/currentThread)

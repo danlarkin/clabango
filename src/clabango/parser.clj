@@ -1,7 +1,8 @@
 (ns clabango.parser
-  (:use [clabango.filters :only [context-lookup template-filter]]
-        [clabango.tags :only [get-block-status load-template
-                              template-tag valid-tags]]))
+  (:require [clojure.set]
+            [clabango.filters :refer [context-lookup template-filter]]
+            [clabango.tags :refer [get-block-status load-template
+                                   template-tag valid-tags]]))
 
 (declare lex* parse ast->parsed)
 

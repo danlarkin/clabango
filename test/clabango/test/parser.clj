@@ -1,7 +1,7 @@
 (ns clabango.test.parser
-  (:use [clojure.test]
-        [clabango.parser]
-        [clabango.tags])
+  (:require [clojure.test :refer :all]
+            [clabango.parser :refer :all]
+            [clabango.tags :refer :all])
   (:import (java.util Date)))
 
 (deftest lex-tests
