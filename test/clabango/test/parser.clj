@@ -196,6 +196,20 @@
                   :list2 '[1 2 3]})
          "a-1' a-2 a-3 b-1' b-2 b-3 c-1' c-2 c-3 ")))
 
+(deftest forloop-with-one-element
+  (is (= (render (str "{% for x in list %}"
+                      "-{{x}}"
+                      "{% endfor %}")
+                 {:list '[a]})
+         "-a")))
+
+(deftest forloop-with-no-elements
+  (is (= (render (str "before{% for x in list %}"
+                      "-{{x}}"
+                      "{% endfor %}after")
+                 {:list '[]})
+         "beforeafter")))
+
 (deftest filter-upper
   (is (= "FOO" (render "{{f|upper}}" {:f "foo"}))))
 
