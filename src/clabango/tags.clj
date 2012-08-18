@@ -9,7 +9,7 @@
 (defn get-block-status [context]
   (::block-info context))
 
-(def valid-tags (atom {}))
+(defonce valid-tags (atom {}))
 
 (defn fix-args
   [fn-tail]
@@ -21,8 +21,9 @@
   (let [[close-tag fn-tail] (if (string? (first args))
                               [(first args) (rest args)]
                               [:inline args])]
-    (swap! valid-tags assoc open-tag close-tag)
-    `(defmethod template-tag ~open-tag ~@(fix-args fn-tail))))
+    `(do
+       (swap! valid-tags assoc ~open-tag ~close-tag)
+       (defmethod template-tag ~open-tag ~@(fix-args fn-tail)))))
 
 (defmulti template-tag (fn [tag-name & _] tag-name))
 
