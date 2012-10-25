@@ -254,3 +254,10 @@
   (is (= "ies" (render "{{f|pluralize:\"y,ies\"}}" {:f []})))
   (is (= "y" (render "{{f|pluralize:\"y,ies\"}}" {:f [1]})))
   (is (= "ies" (render "{{f|pluralize:\"y,ies\"}}" {:f [1 2 3]}))))
+
+(deftest filter-to-json
+  (is (= "1" (render "{{f|to-json}}" {:f 1})))
+  (is (= "[1]" (render "{{f|to-json}}" {:f [1]})))
+  (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
+         (render "{{f|to-json}}" {:f {:foo 27 :dan "awesome"}})))
+  (is (= "null" (render "{{f|to-json}}" {}))))

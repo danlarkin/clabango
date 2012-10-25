@@ -1,4 +1,5 @@
 (ns clabango.filters
+  (:require [cheshire.core :as cheshire])
   (:import (org.apache.commons.codec.digest DigestUtils)
            (org.joda.time Instant)
            (org.joda.time.format DateTimeFormat)))
@@ -73,3 +74,8 @@
       (if (= (count body) 1)
         single
         plural))))
+
+(deftemplatefilter "to-json" [node body arg]
+  (if body
+    (cheshire/encode body)
+    "null"))
