@@ -242,3 +242,15 @@
   (is (= "0" (render "{{f|count}}" {:f []})))
   (is (= "0" (render "{{f|count}}" {}))))
 
+(deftest filter-pluralize
+  (is (= "s" (render "{{f|pluralize}}" {:f []})))
+  (is (= "" (render "{{f|pluralize}}" {:f [1]})))
+  (is (= "s" (render "{{f|pluralize}}" {:f [1 2 3]})))
+
+  (is (= "ies" (render "{{f|pluralize:\"ies\"}}" {:f []})))
+  (is (= "" (render "{{f|pluralize:\"ies\"}}" {:f [1]})))
+  (is (= "ies" (render "{{f|pluralize:\"ies\"}}" {:f [1 2 3]})))
+
+  (is (= "ies" (render "{{f|pluralize:\"y,ies\"}}" {:f []})))
+  (is (= "y" (render "{{f|pluralize:\"y,ies\"}}" {:f [1]})))
+  (is (= "ies" (render "{{f|pluralize:\"y,ies\"}}" {:f [1 2 3]}))))

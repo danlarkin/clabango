@@ -57,3 +57,19 @@
   (if body
     (str (count body))
     "0"))
+
+(defn pluralize-suffixes [arg]
+  (if arg
+    (let [no-quotes (subs arg 1 (dec (count arg)))
+          f (.split no-quotes "," 2)]
+      (if (= 2 (count f))
+        f
+        [nil (first f)]))
+    [nil "s"]))
+
+(deftemplatefilter "pluralize" [node body arg]
+  (when body
+    (let [[single plural] (pluralize-suffixes arg)]
+      (if (= (count body) 1)
+        single
+        plural))))
