@@ -196,6 +196,16 @@
                   :list2 '[1 2 3]})
          "a-1' a-2 a-3 b-1' b-2 b-3 c-1' c-2 c-3 ")))
 
+(deftest forloop-first-last
+  (let [t (str "{% for x in f %}"
+               "{{x}}.{{forloop.first}}.{{forloop.last}},"
+               "{% endfor %}")]
+    (is (= "" (render t {:f []})))
+    (is (= "1.true.true," (render t {:f [1]})))
+    (is (= "1.true.false,2.false.true," (render t {:f [1 2]})))
+    (is (= "1.true.false,2.false.false,3.false.true,"
+           (render t {:f [1 2 3]})))))
+
 (deftest forloop-with-one-element
   (is (= (render (str "{% for x in list %}"
                       "-{{x}}"

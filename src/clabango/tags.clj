@@ -87,15 +87,24 @@
         [x in coll] (:args for-node)
         body-nodes (rest (butlast nodes))]
     (if (= in "in")
-      (let [coll (context-lookup context coll)]
+      (let [coll (context-lookup context coll)
+            single? (= 1 (count coll))]
         (when (seq coll)
           {:groups (cons {:nodes body-nodes
                           :context (assoc context
                                      (keyword x) (first coll)
-                                     :forloop {:first true})}
-                         (for [ele (rest coll)]
-                           {:nodes body-nodes
-                            :context (assoc context
-                                       (keyword x) ele
-                                       :forloop {:first false})}))}))
+                                     :forloop {:first true
+                                               :last single?})}
+                         (when-not single?
+                           (concat (for [ele (rest (butlast coll))]
+                                     {:nodes body-nodes
+                                      :context (assoc context
+                                                 (keyword x) ele
+                                                 :forloop {:first false
+                                                           :last false})})
+                                   [{:nodes body-nodes
+                                     :context (assoc context
+                                                (keyword x) (last coll)
+                                                :forloop {:first false
+                                                          :last true})}])))}))
       (throw (Exception. (str "syntax error in:" for-node))))))
