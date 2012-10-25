@@ -52,3 +52,8 @@
           "sha512" (DigestUtils/sha512Hex body)
           (throw (Exception.
                   hash-name (str "is not a valid hash algorithm " node))))))))
+
+(deftemplatefilter "count" [node body arg]
+  (if body
+    (str (count body))
+    "0"))

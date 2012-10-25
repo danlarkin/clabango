@@ -235,3 +235,10 @@
 
 (deftest filter-hash-no-hash-given
   (is (thrown? Exception (render "{{f|hash}}" {:f "foo"}))))
+
+(deftest filter-count
+  (is (= "3" (render "{{f|count}}" {:f "foo"})))
+  (is (= "4" (render "{{f|count}}" {:f [1 2 3 4]})))
+  (is (= "0" (render "{{f|count}}" {:f []})))
+  (is (= "0" (render "{{f|count}}" {}))))
+
