@@ -8,6 +8,12 @@ It isn't at feature parity yet, but I've used it successfully on a few projects.
 
 I'll try to document it here, but you may get more out of Django's template docs (https://docs.djangoproject.com/en/1.4/topics/templates/) than anything I can write.
 
+## Usage
+
+```clojure
+[clabango "0.3"]
+```
+
 ## Major Concepts
 
 ### Template basics
