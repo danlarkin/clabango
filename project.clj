@@ -1,4 +1,4 @@
-(defproject clabango "0.3"
+(defproject clabango "0.4-SNAPSHOT"
   :description "A templating language?"
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [cheshire "4.0.4"]
