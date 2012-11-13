@@ -149,7 +149,7 @@ This tag is also used in template inheritance -- It defines the current template
 
 It's an `if` -- only render the body if the conditional is true.
 
-`{% if condition %}yes!{% endif %}
+`{% if condition %}yes!{% endif %}`
 
 **ifequal/endifequal** *block*
 
@@ -176,14 +176,14 @@ Clabango's template inheritance is modeled on Django's -- docs available here: h
   (:require [clabango.parser :refer [render-file]]))
 
 (defn index [request]
-  (render-file "example/templates/index.html"))
+  (render-file "example/templates/index.html" {:greeting "Hey!"}))
 ```
 
 `src/example/templates/index.html`
 ```html
 <html>
 <body>
-Hey welcome to example.com!
+{{greeting}} Welcome to example.com!
 </body>
 </html>
 ```
