@@ -4,7 +4,7 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]]))
 
-(declare lex* parse ast->parsed)
+(declare lex* string->ast ast->groups)
 
 (defn start-of-new-token? [s i]
   (let [c (.charAt s i)
@@ -114,11 +114,6 @@
               :body token}
              (ast (rest tokens)))))))
 
-(defn reapply-block-status [ast context]
-  (let [block-status (get-block-status context)]
-    (for [node ast]
-      (merge node block-status))))
-
 (defn valid-tag? [tag-name]
   (let [valid-tags-snapshot @valid-tags]
     (or (valid-tags-snapshot tag-name)
@@ -178,85 +173,40 @@
 (defn interpret-tags [ast context]
   (lazy-seq
    (when-let [node (first ast)]
-     (if (= :tag (:type node))
-       (let [end-tag-name (valid-tag? (:tag-name node))
-             [body rest-ast] (if (or (nil? end-tag-name)
-                                     (= end-tag-name :inline))
-                               [[node]
-                                (rest ast)]
-                               (find-body end-tag-name ast))
-             tag-result (template-tag (:tag-name node) body context)]
-         (concat (cond
-                  (:string tag-result)
-                  (parse (:string tag-result)
-                         (:context tag-result context))
+     (case (:type node)
+       :tag (let [end-tag-name (valid-tag? (:tag-name node))
+                  [body rest-ast] (if (or (nil? end-tag-name)
+                                          (= end-tag-name :inline))
+                                    [[node]
+                                     (rest ast)]
+                                    (find-body end-tag-name ast))
+                  tag-result (template-tag (:tag-name node) body context)]
+              (concat (cond
+                       (:string tag-result)
+                       (-> (:string tag-result)
+                           string->ast
+                           (ast->groups (:context tag-result context)))
 
-                  (:nodes tag-result)
-                  (ast->parsed (:nodes tag-result)
-                               (:context tag-result context))
+                       (:nodes tag-result)
+                       (ast->groups (:nodes tag-result)
+                                    (:context tag-result context))
 
-                  (:groups tag-result)
-                  (apply concat (for [group (:groups tag-result)]
-                                  (ast->parsed (:nodes group)
-                                               (:context group context)))))
-                 (interpret-tags rest-ast context)))
+                       (:groups tag-result)
+                       (apply concat (for [group (:groups tag-result)]
+                                       (ast->groups (:nodes group)
+                                                    (:context group context)))))
+                      (interpret-tags rest-ast context)))
+
+       :block (cons (update-in node [:nodes] #(ast->groups % context))
+                    (interpret-tags (rest ast) context))
+
        (cons node (interpret-tags (rest ast) context))))))
-
-(defn get-block-overrides [ast]
-  (loop [ast ast
-         current-block-metadata {}
-         block-overrides {}
-         block-metadata {}]
-    (if-let [node (first ast)]
-      (if-let [block-name (:block-name node)]
-        (if (and (block-overrides block-name)
-                 (= (:block-metadata node) current-block-metadata))
-          (recur (rest ast)
-                 current-block-metadata
-                 (update-in block-overrides [block-name] conj node)
-                 block-metadata)
-          (recur (rest ast)
-                 (:block-metadata node)
-                 (assoc block-overrides block-name [node])
-                 (assoc block-metadata block-name (:block-metadata node))))
-        (recur (rest ast)
-               current-block-metadata
-               block-overrides
-               block-metadata))
-      [block-overrides block-metadata])))
-
-(defn reduce-blocks [ast]
-  (let [[block-overrides block-metadata] (get-block-overrides ast)]
-    (loop [result []
-           ast ast
-           filled-blocks #{}]
-      (if-let [node (first ast)]
-        (if-let [block-name (:block-name node)]
-          (if (block-overrides block-name)
-            (if-not (filled-blocks block-name)
-              (if-not (= (:block-metadata node) (block-metadata block-name))
-                (let [replacement-nodes (block-overrides block-name)]
-                  (recur (vec (concat result replacement-nodes))
-                         (rest ast)
-                         (conj filled-blocks block-name)))
-                (recur (conj result node)
-                       (rest ast)
-                       filled-blocks))
-              (recur result
-                     (rest ast)
-                     filled-blocks))
-            (recur result
-                   (rest ast)
-                   filled-blocks))
-          (recur (conj result node)
-                 (rest ast)
-                 filled-blocks))
-        result))))
 
 (defn parse-filters [ast context]
   (lazy-seq
    (when-let [node (first ast)]
-     (if (= :filter (:type node))
+     (case (:type node)
+       :filter
        (let [var-and-filter (.trim (:token (:body node)))
              [var filter-name arg] (rest (re-find #"([^|]+)\|([^:]+):?(.+)?"
                                                   var-and-filter))]
@@ -276,7 +226,57 @@
                               arg)
                              (context-lookup context var-and-filter)))))
                  (parse-filters (rest ast) context))))
+
+       :group
+       ;; not a tail call, I know
+       (cons (update-in node [:nodes] #(parse-filters % context))
+             (parse-filters (rest ast) context))
+
        (cons node (parse-filters (rest ast) context))))))
+
+(defn get-block-values [ast]
+  (loop [ast (reverse ast)
+         block-values {}]
+    (if-let [node (first ast)]
+      (let [block-name (:name node)]
+        (if (and (= :block (:type node))
+                 (not (block-values block-name)))
+          (recur (rest ast)
+                 (assoc block-values block-name node))
+          (recur (rest ast)
+                 block-values)))
+      block-values)))
+
+(defn reduce-blocks* [ast block-values]
+  (loop [ast ast
+         result []
+         filled-blocks #{}]
+    (if-let [node (first ast)]
+      (if (= :block (:type node))
+        (let [block-name (:name node)]
+          (if-not (filled-blocks block-name)
+            (let [block-nodes (:nodes (block-values block-name))
+                  ;; more non-tail calls, I know
+                  sub-reduction (reduce-blocks*
+                                 block-nodes
+                                 (merge (get-block-values block-nodes)
+                                        block-values))]
+              (recur (rest ast)
+                     (vec (concat result (:result sub-reduction)))
+                     (-> filled-blocks
+                         (into (:filled-blocks sub-reduction))
+                         (conj block-name))))
+            (recur (rest ast)
+                   result
+                   filled-blocks)))
+        (recur (rest ast)
+               (conj result node)
+               filled-blocks))
+      {:result result
+       :filled-blocks filled-blocks})))
+
+(defn reduce-blocks [ast]
+  (:result (reduce-blocks* ast (get-block-values ast))))
 
 (defn realize [ast]
   (let [sb (StringBuilder.)]
@@ -298,18 +298,21 @@
       lex
       ast))
 
-(defn ast->parsed [ast context]
+(defn ast->groups [ast context]
   (-> ast
-      (reapply-block-status context)
       parse-tags
       (interpret-tags context)
-      reduce-blocks
       (parse-filters context)))
+
+(defn groups->parsed [ast]
+  (-> ast
+      reduce-blocks))
 
 (defn parse [s context]
   (-> s
       string->ast
-      (ast->parsed context)))
+      (ast->groups context)
+      groups->parsed))
 
 (def render (comp realize parse))
 

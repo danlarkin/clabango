@@ -37,15 +37,13 @@
 (deftemplatetag "block" "endblock" [nodes context]
   (let [block-node (first nodes)
         block-name (first (:args block-node))
-        block-info {:block-name block-name
-                    :block-metadata (select-keys (:body block-node)
-                                                 #{:offset :line :file})}]
-    (let [body-nodes (rest (butlast nodes))]
-      {:nodes (if (seq body-nodes)
-                (for [node body-nodes]
-                  (merge node block-info))
-                [(assoc block-info :type :noop)])
-       :context (assoc context ::block-info block-info)})))
+        body-nodes (rest (butlast nodes))]
+    {:nodes [(merge {:type :block
+                     :name block-name
+                     :nodes body-nodes}
+                    (select-keys (:body block-node)
+                                 #{:offset :line :file}))]
+     :context context}))
 
 (deftemplatetag "extends" [nodes context]
   (let [{:keys [string]} (template-tag "include" nodes context)]

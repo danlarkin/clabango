@@ -143,6 +143,38 @@
                  {:bar "BAR" :name "Dan"})
          "Hello, Dan!\n\nHere's the default text of bar BAR\n")))
 
+(deftest overriding-blocks-inside-other-blocks
+  (is (= (render
+          (str "{% block a %}first a{% endblock%}"
+               "{%block a%}"
+               "second a start"
+               "{%block b %}{% endblock%}"
+               "second a stop"
+               "{% endblock %}"
+               "{%block b%}second b{%endblock%}")
+          {})
+         (str "second a start"
+              "second b"
+              "second a stop"))))
+
+(deftest overriding-blocks-inside-other-blocks-through-template-inheritance
+  (is (= (render-file "clabango/templates/inherit-c.html" {})
+         (str "start a\n"
+              "\n"
+              "start b\n"
+              "\n"
+              "start c\n"
+              "stop c\n"
+              "\n"
+              "stop b\n"
+              "\n"
+              "stop a\n"
+              "\n"
+              "\n"
+              "\n"
+              "\n"
+              "\n"))))
+
 (deftest test-if
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
          "foo is true"))
