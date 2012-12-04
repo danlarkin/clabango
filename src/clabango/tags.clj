@@ -46,9 +46,7 @@
      :context context}))
 
 (deftemplatetag "extends" [nodes context]
-  (let [{:keys [string]} (template-tag "include" nodes context)]
-    {:string string
-     :context (assoc context :extended true)}))
+  (template-tag "include" nodes context))
 
 (deftemplatetag "if" "endif" [nodes context]
   (let [if-node (first nodes)
