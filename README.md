@@ -11,7 +11,7 @@ I'll try to document it here, but you may get more out of Django's template docs
 ## Usage
 
 ```clojure
-[clabango "0.3"]
+[clabango "0.4"]
 ```
 
 ## Major Concepts
