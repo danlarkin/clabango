@@ -1,0 +1,5 @@
+0.4 2012-12-04
+* Fixed bug with overriding blocks contained in other block overrides.
+
+0.3 2012-11-13
+* Initial Release.

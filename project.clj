@@ -1,6 +1,9 @@
-(defproject clabango "0.4-SNAPSHOT"
+(defproject clabango "0.4"
   :description "A templating language?"
-  :url "http://github.com/danlarkin/clabango/"
+  :url "https://github.com/danlarkin/clabango/"
+  :license {:name "3-Clause BSD"
+            :url "http://opensource.org/licenses/BSD-3-Clause"
+            :distribution :repo}
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [cheshire "4.0.4"]
                  [commons-codec "1.6"]
