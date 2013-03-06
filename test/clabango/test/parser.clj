@@ -179,13 +179,32 @@
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo true})
          "foo is true"))
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
-         "")))
+         ""))
+  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}" {:foo true})
+         "foo is true"))
+  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}" {:foo false})
+         "foo is false"))
+  (let [template 
+        "{% if foo %}
+         foo is true
+         {% if bar %}bar is also true{% endif %}
+         {% else %} foo is false
+         {% if baz %}but baz is true {% else %}baz is also false{% endif %}
+         {% endif %}"]
+    (is (= (render template {:foo true :bar true :baz false})
+           "\n         foo is true\n         bar is also true\n         "))
+    (is (= (render template {:foo false :bar true :baz false})
+           " foo is false\n         baz is also false\n         "))
+    (is (= (render template {:foo false :bar true :baz true})
+           " foo is false\n         but baz is true \n         "))))
 
 (deftest test-if-not
   (is (= (render "{% if not foo %}foo is true{% endif %}" {:foo true})
          ""))
   (is (= (render "{% if not foo %}foo is true{% endif %}" {:foo false})
          "foo is true")))
+
+
 
 (deftest test-nested-if
   (is (= (render (str "{% if foo %}before bar {% if bar %}"

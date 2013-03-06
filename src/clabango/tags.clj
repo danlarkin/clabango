@@ -48,23 +48,31 @@
 (deftemplatetag "extends" [nodes context]
   (template-tag "include" nodes context))
 
-(deftemplatetag "if" "endif" [nodes context]
-  (let [if-node (first nodes)
-        args (:args if-node)
-        body-nodes (rest (butlast nodes))
+(deftemplatetag "else" [nodes context]  
+  {:nodes [{:type :noop}]
+   :context context})
+
+(deftemplatetag "if" "endif" [[if-node & nodes] context]  
+  (let [args            (:args if-node)          
+        body-nodes      (butlast nodes)
         [flip decision] (cond (= 1 (count args))
                               [identity (first args)]
-
+                              
                               (and (= 2 (count args))
                                    (= "not" (first args)))
                               [not (second args)]
-
+                              
                               :default (throw (Exception. (str "Syntax error: "
                                                                if-node))))]
-    {:nodes (if (flip (context-lookup context decision))
-              body-nodes
-              [{:body (dissoc (:body if-node) :token)
-                :type :noop}])}))
+    {:nodes (cond 
+              (flip (context-lookup context decision)) 
+              (take-while #(not= "else" (:tag-name %)) body-nodes)
+              
+              (some #{"else"} (map :tag-name body-nodes)) 
+              (rest (drop-while #(not= "else" (:tag-name %)) body-nodes))
+              
+              :else [{:body (dissoc (:body if-node) :token)
+                      :type :noop}])}))
 
 (deftemplatetag "ifequal" "endifequal" [nodes context]
   (let [if-node (first nodes)
