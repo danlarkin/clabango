@@ -184,7 +184,7 @@
          "foo is true"))
   (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}" {:foo false})
          "foo is false"))
-  (let [template 
+  (let [template
         "{% if foo %}
          foo is true
          {% if bar %}bar is also true{% endif %}
