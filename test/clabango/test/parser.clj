@@ -180,9 +180,11 @@
          "foo is true"))
   (is (= (render "{% if foo %}foo is true{% endif %}" {:foo false})
          ""))
-  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}" {:foo true})
+  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}"
+                 {:foo true})
          "foo is true"))
-  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}" {:foo false})
+  (is (= (render "{% if foo %}foo is true{% else %}foo is false{% endif %}"
+                 {:foo false})
          "foo is false"))
   (let [template
         "{% if foo %}
@@ -226,9 +228,11 @@
                  {:foo "foo"
                   :bar "bar"})
          ""))
-  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}" {:foo "foo"})
+  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}"
+                 {:foo "foo"})
          "foo"))
-  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}" {:foo false})
+  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}"
+                 {:foo false})
          "no foo")))
 
 (deftest test-for
