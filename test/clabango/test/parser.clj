@@ -225,7 +225,11 @@
   (is (= (render "{% ifequal foo \"foo\" bar %}yez{% endifequal %}"
                  {:foo "foo"
                   :bar "bar"})
-         "")))
+         ""))
+  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}" {:foo "foo"})
+         "foo"))
+  (is (= (render "{% ifequal foo \"foo\" %}foo{% else %}no foo{% endifequal %}" {:foo false})
+         "no foo")))
 
 (deftest test-for
   (is (= (render "{% for ele in foo %}<<{{ele}}>>{%endfor%}"

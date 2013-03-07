@@ -79,11 +79,17 @@
   (let [if-node (first nodes)
         operands (:args if-node)
         body-nodes (rest (butlast nodes))]
-    {:nodes (if (apply = (for [op operands]
-                           (if (= \" (.charAt op 0))
-                             (subs op 1 (dec (count op)))
-                             (context-lookup context op))))
-              body-nodes
+    {:nodes (cond 
+              (apply = (for [op operands]
+                         (if (= \" (.charAt op 0))
+                           (subs op 1 (dec (count op)))
+                           (context-lookup context op))))
+              (take-while #(not= "else" (:tag-name %)) body-nodes)
+              
+              (some #{"else"} (map :tag-name body-nodes))
+              (rest (drop-while #(not= "else" (:tag-name %)) body-nodes))
+              
+              :else 
               [{:body (dissoc (:body if-node) :token)
                 :type :noop}])}))
 
