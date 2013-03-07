@@ -157,11 +157,15 @@ It's an `if` -- only render the body if the conditional is true.
 
 `{% if condition %}yes!{% endif %}`
 
+`{% if condition %}yes!{% else %}no!{% endif %}`
+
 **ifequal/endifequal** *block*
 
 Only render the body if the two args are equal (according to clojure.core/=).
 
 `{% ifequal foo bar %}yes!{% endifequal %}`
+
+`{% ifequal foo bar %}yes!{% else %}no!{% endifequal %}`
 
 `{% ifequal foo "this also works" %}yes!{% endifequal %}`
 
