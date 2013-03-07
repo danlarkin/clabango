@@ -49,7 +49,7 @@
   (template-tag "include" nodes context))
 
 (deftemplatetag "else" [nodes context]
-  (throw (new Exception "else tag must be enclosed within an if tag"))
+  (throw (new Exception "else tag not allowed outside if and ifequal tags"))
   {:nodes [{:type :noop}]
    :context context})
 
