@@ -48,10 +48,9 @@
 (deftemplatetag "extends" [nodes context]
   (template-tag "include" nodes context))
 
-(deftemplatetag "else" [nodes context]
-  (throw (new Exception "else tag not allowed outside if and ifequal tags"))
-  {:nodes [{:type :noop}]
-   :context context})
+(deftemplatetag "else" [[node] context]
+  (throw (Exception. (str "else tag is only allowed inside"
+                          " if and ifequal tags: " node))))
 
 (deftemplatetag "if" "endif" [[if-node & nodes] context]
   (let [args            (:args if-node)

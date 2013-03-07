@@ -199,9 +199,7 @@
            " foo is false\n         baz is also false\n         "))
     (is (= (render template {:foo false :bar true :baz true})
            " foo is false\n         but baz is true \n         ")))
-  (try (render "foo {% else %} bar" {})
-    (catch Exception ex 
-      (is (= "else tag not allowed outside if and ifequal tags" (.getMessage ex))))))
+  (is (thrown? Exception (render "foo {% else %} bar" {}))))
 
 (deftest test-if-not
   (is (= (render "{% if not foo %}foo is true{% endif %}" {:foo true})
