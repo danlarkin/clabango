@@ -5,6 +5,6 @@
             :url "http://opensource.org/licenses/BSD-3-Clause"
             :distribution :repo}
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [cheshire "5.0.0"]
+                 [cheshire "5.0.2"]
                  [commons-codec "1.6"]
                  [joda-time "2.1"]])
