@@ -1,5 +1,6 @@
 (ns clabango.parser
   (:require [clojure.set]
+            [hiccup.util :refer [escape-html]]
             [clabango.filters :refer [context-lookup template-filter]]
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]]))
@@ -284,7 +285,7 @@
       (if-let [node (first ast)]
         (case (:type node)
           :string (do
-                    (.append sb (:token (:body node)))
+                    (.append sb (escape-html (:token (:body node))))
                     (recur (rest ast)))
           :noop (recur (rest ast))
           (throw (Exception.
