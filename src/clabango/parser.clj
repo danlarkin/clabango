@@ -1,9 +1,17 @@
 (ns clabango.parser
   (:require [clojure.set]
-            [hiccup.util :refer [escape-html]]
             [clabango.filters :refer [context-lookup template-filter]]
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]]))
+
+(defn escape-html
+  "Change special characters into HTML character entities."
+  [text]
+  (.. ^String (as-str text)
+    (replace "&"  "&amp;")
+    (replace "<"  "&lt;")
+    (replace ">"  "&gt;")
+    (replace "\"" "&quot;")))
 
 (declare lex* string->ast ast->groups)
 
