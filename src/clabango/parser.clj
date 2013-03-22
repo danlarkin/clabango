@@ -4,6 +4,15 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]]))
 
+(defn escape-html
+  "Change special characters into HTML character entities."
+  [text]
+  (.. ^String (as-str text)
+    (replace "&"  "&amp;")
+    (replace "<"  "&lt;")
+    (replace ">"  "&gt;")
+    (replace "\"" "&quot;")))
+
 (declare lex* string->ast ast->groups)
 
 (defn start-of-new-token? [s i]
@@ -284,7 +293,7 @@
       (if-let [node (first ast)]
         (case (:type node)
           :string (do
-                    (.append sb (:token (:body node)))
+                    (.append sb (escape-html (:token (:body node))))
                     (recur (rest ast)))
           :noop (recur (rest ast))
           (throw (Exception.
