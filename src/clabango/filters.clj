@@ -23,7 +23,7 @@
 
 (deftemplatefilter "upper" [node body arg]
   (when body
-    (.toUpperCase body)))
+    {:body (.toUpperCase body)}))
 
 (def get-date-formatter
   (memoize (fn [s]
@@ -36,8 +36,8 @@
     (if (not arg)
       (throw (Exception.
               (str "date filter requires a format string argument " node)))
-      (.print (get-date-formatter (subs arg 1 (dec (count arg))))
-              (Instant. body)))))
+      {:body (.print (get-date-formatter (subs arg 1 (dec (count arg))))
+                     (Instant. body))})))
 
 (deftemplatefilter "hash" [node body arg]
   (when body
@@ -45,19 +45,20 @@
       (throw (Exception.
               (str "hash filter requires a hash name argument " node)))
       (let [hash-name (subs arg 1 (dec (count arg)))]
-        (case hash-name
-          "md5" (DigestUtils/md5Hex body)
-          "sha" (DigestUtils/shaHex body)
-          "sha256" (DigestUtils/sha256Hex body)
-          "sha384" (DigestUtils/sha384Hex body)
-          "sha512" (DigestUtils/sha512Hex body)
-          (throw (Exception.
-                  hash-name (str "is not a valid hash algorithm " node))))))))
+        {:body (case hash-name
+                 "md5" (DigestUtils/md5Hex body)
+                 "sha" (DigestUtils/shaHex body)
+                 "sha256" (DigestUtils/sha256Hex body)
+                 "sha384" (DigestUtils/sha384Hex body)
+                 "sha512" (DigestUtils/sha512Hex body)
+                 (throw (Exception.
+                         hash-name (str "is not a valid hash algorithm "
+                                        node))))}))))
 
 (deftemplatefilter "count" [node body arg]
-  (if body
-    (str (count body))
-    "0"))
+  {:body (if body
+           (str (count body))
+           "0")})
 
 (defn pluralize-suffixes [arg]
   (if arg
@@ -71,11 +72,15 @@
 (deftemplatefilter "pluralize" [node body arg]
   (when body
     (let [[single plural] (pluralize-suffixes arg)]
-      (if (= (count body) 1)
-        single
-        plural))))
+      {:body (if (= (count body) 1)
+               single
+               plural)})))
 
 (deftemplatefilter "to-json" [node body arg]
-  (if body
-    (cheshire/encode body)
-    "null"))
+  {:body (if body
+           (cheshire/encode body)
+           "null")})
+
+(deftemplatefilter "safe" [node body arg]
+  {:body body
+   :safe? true})

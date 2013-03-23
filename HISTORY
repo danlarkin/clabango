@@ -1,5 +1,6 @@
 0.6 ???
 * Template filters can now be chained.
+* Variables are now html-escaped by default. The `safe` filter can be used to exempt a variable from being escaped.
 
 0.5 2013-03-10
 * The `if` and `ifequal` tags now support `else` branches.

@@ -52,36 +52,43 @@
                " {% include \"clabango/templates/foo.html\" %}")]
     (is (= (parse s {:foo 42 :name "Dan"})
            [{:type :string
+             :safe? false
              :body {:token "42"
                     :offset 3
                     :line 1
                     :file "UNKNOWN"}}
             {:type :string
+             :safe? true
              :body {:token "\n"
                     :offset 8
                     :line 1
                     :file "UNKNOWN"}}
             {:type :string
+             :safe? true
              :body {:token " dogs live in the park. "
                     :offset 1
                     :line 2
                     :file "UNKNOWN"}}
             {:type :string
+             :safe? true
              :body {:token "Hello, "
                     :offset 1
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :safe? false
              :body {:token "Dan"
                     :offset 10
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :safe? true
              :body {:token "!"
                     :offset 16
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :safe? true
              :body {:token "\n"
                     :offset 17
                     :line 1
@@ -326,10 +333,32 @@
 (deftest filter-to-json
   (is (= "1" (render "{{f|to-json}}" {:f 1})))
   (is (= "[1]" (render "{{f|to-json}}" {:f [1]})))
-  (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
+  (is (= "{&quot;foo&quot;:27,&quot;dan&quot;:&quot;awesome&quot;}"
          (render "{{f|to-json}}" {:f {:foo 27 :dan "awesome"}})))
+  (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
+         (render "{{f|to-json|safe}}" {:f {:foo 27 :dan "awesome"}})))
+  (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
+         (render "{{f|safe|to-json}}" {:f {:foo 27 :dan "awesome"}})))
   (is (= "null" (render "{{f|to-json}}" {}))))
 
 (deftest filter-chaining
   (is (= "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"
          (render "{{f|hash:\"md5\"|upper}}" {:f "foo"}))))
+
+(deftest test-escaping
+  (is (= "<tag>&lt;foo bar=&quot;baz&quot;&gt;\\&gt;</tag>"
+         (render "<tag>{{f}}</tag>" {:f "<foo bar=\"baz\">\\>"})))
+  (is (= "&amp;&trade;&eacute;"
+         (render "{{f}}" {:f "&™é"}))))
+
+(deftest test-safe-filter
+  (is (= "&lt;foo&gt;"
+         (render "{{f}}" {:f "<foo>"})))
+  (is (= "<foo>"
+         (render "{{f|safe}}" {:f "<foo>"})))
+  (is (= "<FOO>"
+         (render "{{f|upper|safe}}" {:f "<foo>"})))
+  (is (= "<FOO>"
+         (render "{{f|safe|upper}}" {:f "<foo>"})))
+  (is (= "<FOO>"
+         (render "{{f|safe|upper|safe}}" {:f "<foo>"}))))

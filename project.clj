@@ -8,4 +8,5 @@
                  [cheshire "5.0.2"]
                  [commons-codec "1.6"]
                  [joda-time "2.1"]
-                 [net.sf.opencsv/opencsv "2.3"]])
+                 [net.sf.opencsv/opencsv "2.3"]
+                 [org.apache.commons/commons-lang3 "3.1"]])

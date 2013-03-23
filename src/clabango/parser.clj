@@ -4,7 +4,8 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]])
   (:import (au.com.bytecode.opencsv CSVReader)
-           (java.io StringReader)))
+           (java.io StringReader)
+           (org.apache.commons.lang3 StringEscapeUtils)))
 
 (declare lex* string->ast ast->groups)
 
@@ -90,6 +91,7 @@
              (string? (:token b))
              (= (:token c) :close-filter))
       [{:type :filter
+        :safe? false
         :body b}
        rest-tokens]
       (throw (Exception. (str "parsing error after " a))))))
@@ -113,6 +115,7 @@
        :open-tag (let [[token rest-tokens] (find-close-tag tokens)]
                    (cons token (ast rest-tokens)))
        (cons {:type :string
+              :safe? true
               :body token}
              (ast (rest tokens)))))))
 
@@ -219,17 +222,18 @@
           (update-in
            (reduce
             (fn [node filter-and-args]
-              (let [[filter-name arg] (.split filter-and-args ":" 2)]
+              (let [[filter-name arg] (.split filter-and-args ":" 2)
+                    body (get-in node [:body :token])]
                 (if (and arg
                          (not (and (.startsWith arg "\"")
                                    (.endsWith arg "\""))))
                   (throw (Exception.
                           (str "filter arguments must be in quotes "
                                node)))
-                  (assoc-in
-                   node [:body :token]
-                   (template-filter
-                    filter-name node (get-in node [:body :token]) arg)))))
+                  (let [filtered (template-filter filter-name node body arg)]
+                    (-> node
+                        (assoc :safe? (or (:safe? node) (:safe? filtered)))
+                        (assoc-in [:body :token] (:body filtered)))))))
             (-> node
                 (assoc :type :string)
                 (assoc-in [:body :token] (context-lookup context var)))
@@ -295,7 +299,10 @@
       (if-let [node (first ast)]
         (case (:type node)
           :string (do
-                    (.append sb (:token (:body node)))
+                    (.append sb (if (:safe? node)
+                                  (:token (:body node))
+                                  (StringEscapeUtils/escapeHtml4
+                                   (:token (:body node)))))
                     (recur (rest ast)))
           :noop (recur (rest ast))
           (throw (Exception.

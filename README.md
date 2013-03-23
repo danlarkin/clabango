@@ -35,13 +35,17 @@ It's possible to define custom filters for your project.
             [clabango.parser :refer [render]]))
 
 (deftemplatefilter prepend-hi [node body arg]
-  (str "Hi, " body))
+  {:body (str "Hi, " body)})
 
 (defn render-hi [name]
   (render "{{name|prepend-hi}}" {:name name}))
 ```
 
 Calling `(render-hi "Dan")` would result in `"Hi, Dan"`.
+
+By default all content from variables is html-escaped. If you have some content you know is safe, you can exempt it from getting escaped by using the `safe` filter, like this: `{{foo|safe}}`.
+
+Your custom template filter can return safe content by setting `:safe?` to `true` in the map it returns.
 
 Here's a list of all the builtin template filters:
 
@@ -97,7 +101,19 @@ Returns the correct (English) pluralization based on the variable. This works wi
 
 Render a clojure datastrucure into JSON.
 
-`{{data|to-json}}` w/ `{:data [1 2 3 {:a "b"}]}` => `[1, 2, 3, {"a":"b"}]`
+`{{data|to-json}}` w/ `{:data [1 2 3 {:a "b"}]}` => `[1,2,3,{&quot;a&quot;:&quot;b&quot;}]`
+
+Remember, all content from variables is automatically html-escaped. If you want to get non-escaped JSON, use the `safe` filter.
+
+`{{data|to-json|safe}}` w/ `{:data [1 2 3 {:a "b"}]}` => `[1,2,3,{"a":"b"}]`
+
+**safe**
+
+Exempts the variable from being html-escaped.
+
+`{{data}}` w/ `{:data "<foo>"}` => `&lt;foo&gt;`
+
+`{{data|safe}}` w/ `{:data "<foo>"}` => `<foo>`
 
 
 ### Tags
