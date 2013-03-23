@@ -2,7 +2,9 @@
   (:require [clojure.set]
             [clabango.filters :refer [context-lookup template-filter]]
             [clabango.tags :refer [get-block-status load-template
-                                   template-tag valid-tags]]))
+                                   template-tag valid-tags]])
+  (:import (au.com.bytecode.opencsv CSVReader)
+           (java.io StringReader)))
 
 (declare lex* string->ast ast->groups)
 
@@ -202,30 +204,39 @@
 
        (cons node (interpret-tags (rest ast) context))))))
 
+(defn get-filters
+  "Returns a list of the var and any filters (plus args)"
+  [var-and-filters]
+  (seq (.readNext (CSVReader. (StringReader. var-and-filters) \| (char 0)))))
+
 (defn parse-filters [ast context]
   (lazy-seq
    (when-let [node (first ast)]
      (case (:type node)
        :filter
-       (let [var-and-filter (.trim (:token (:body node)))
-             [var filter-name arg] (rest (re-find #"([^|]+)\|([^:]+):?(.+)?"
-                                                  var-and-filter))]
-         (if (and arg
-                  (not (and (.startsWith arg "\"")
-                            (.endsWith arg "\""))))
-           (throw (Exception. (str "filter arguments must be in quotes " node)))
-           (cons (-> node
-                     (assoc :type :string)
-                     (assoc-in
-                      [:body :token]
-                      (str (if filter-name
-                             (template-filter
-                              filter-name
-                              node
-                              (context-lookup context var)
-                              arg)
-                             (context-lookup context var-and-filter)))))
-                 (parse-filters (rest ast) context))))
+       (let [[var & filters] (get-filters (.trim (:token (:body node))))]
+         (cons
+          (update-in
+           (reduce
+            (fn [node filter-and-args]
+              (let [[filter-name arg] (.split filter-and-args ":" 2)]
+                (if (and arg
+                         (not (and (.startsWith arg "\"")
+                                   (.endsWith arg "\""))))
+                  (throw (Exception.
+                          (str "filter arguments must be in quotes "
+                               node)))
+                  (assoc-in
+                   node [:body :token]
+                   (template-filter
+                    filter-name node (get-in node [:body :token]) arg)))))
+            (-> node
+                (assoc :type :string)
+                (assoc-in [:body :token] (context-lookup context var)))
+            filters)
+           [:body :token]
+           str)
+          (parse-filters (rest ast) context)))
 
        :group
        ;; not a tail call, I know

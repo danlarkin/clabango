@@ -7,4 +7,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [cheshire "5.0.2"]
                  [commons-codec "1.6"]
-                 [joda-time "2.1"]])
+                 [joda-time "2.1"]
+                 [net.sf.opencsv/opencsv "2.3"]])

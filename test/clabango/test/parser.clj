@@ -329,3 +329,7 @@
   (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
          (render "{{f|to-json}}" {:f {:foo 27 :dan "awesome"}})))
   (is (= "null" (render "{{f|to-json}}" {}))))
+
+(deftest filter-chaining
+  (is (= "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"
+         (render "{{f|hash:\"md5\"|upper}}" {:f "foo"}))))
