@@ -52,36 +52,43 @@
                " {% include \"clabango/templates/foo.html\" %}")]
     (is (= (parse s {:foo 42 :name "Dan"})
            [{:type :string
+             :escape true
              :body {:token "42"
                     :offset 3
                     :line 1
                     :file "UNKNOWN"}}
             {:type :string
+             :escape true
              :body {:token "\n"
                     :offset 8
                     :line 1
                     :file "UNKNOWN"}}
             {:type :string
+             :escape true
              :body {:token " dogs live in the park. "
                     :offset 1
                     :line 2
                     :file "UNKNOWN"}}
             {:type :string
+             :escape true
              :body {:token "Hello, "
                     :offset 1
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :escape true
              :body {:token "Dan"
                     :offset 10
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :escape true
              :body {:token "!"
                     :offset 16
                     :line 1
                     :file (load-template "clabango/templates/foo.html")}}
             {:type :string
+             :escape true
              :body {:token "\n"
                     :offset 17
                     :line 1
@@ -213,7 +220,7 @@
                       "{% endif %} after bar{% endif %}")
                  {:foo true
                   :bar true})
-         "before bar foo & bar are true after bar")))
+         "before bar foo &amp; bar are true after bar")))
 
 (deftest test-ifequal
   (is (= (render "{% ifequal foo \"foo\" %}yez{% endifequal %}" {:foo "foo"})
@@ -236,7 +243,8 @@
 (deftest test-for
   (is (= (render "{% for ele in foo %}<<{{ele}}>>{%endfor%}"
                  {:foo [1 2 3]})
-         "<<1>><<2>><<3>>")))
+         ; "<<1>><<2>><<3>>" nope.jpg
+         "&lt;&lt;1&gt;&gt;&lt;&lt;2&gt;&gt;&lt;&lt;3&gt;&gt;")))
 
 (deftest test-map-lookup
   (is (= (render "{{foo}}" {:foo {:bar 42}})
@@ -326,6 +334,15 @@
 (deftest filter-to-json
   (is (= "1" (render "{{f|to-json}}" {:f 1})))
   (is (= "[1]" (render "{{f|to-json}}" {:f [1]})))
-  (is (= "{\"foo\":27,\"dan\":\"awesome\"}"
+  (is (= "{\"foo\":27,\"dan\":\"awesome\"}" 
+         ;"{&quot;foo&quot;:27,&quot;dan&quot;:&quot;awesome&quot;}"
          (render "{{f|to-json}}" {:f {:foo 27 :dan "awesome"}})))
   (is (= "null" (render "{{f|to-json}}" {}))))
+
+(deftest escapes-html
+  (is (not= "/><nefarioushtml blah='blah'></nefarioushtml>"
+         (render "{{badmojo}}" {:badmojo "/><nefarioushtml blah='blah'></nefarioushtml>"})))
+  (is (= "/&gt;&lt;nefarioushtml blah='blah'&gt;&lt;/nefarioushtml&gt;"
+         (render "{{badmojo}}" {:badmojo "/><nefarioushtml blah='blah'></nefarioushtml>"})))
+  (is (= "<foo>bar</foo>" (render "<foo>bar</foo>" {} :escape false))))
+

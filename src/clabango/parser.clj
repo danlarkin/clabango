@@ -4,6 +4,17 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]]))
 
+(declare ^:dynamic *escape*)
+
+(defn escape-html
+  "Change special characters into HTML character entities."
+  [text]
+  (.. ^String text
+    (replace "&"  "&amp;")
+    (replace "<"  "&lt;")
+    (replace ">"  "&gt;")
+    (replace "\"" "&quot;")))
+
 (declare lex* string->ast ast->groups)
 
 (defn start-of-new-token? [s i]
@@ -202,37 +213,37 @@
 
        (cons node (interpret-tags (rest ast) context))))))
 
-(defn parse-filters [ast context]
+(defn parse-filters [ast context]  
   (lazy-seq
-   (when-let [node (first ast)]
-     (case (:type node)
-       :filter
-       (let [var-and-filter (.trim (:token (:body node)))
-             [var filter-name arg] (rest (re-find #"([^|]+)\|([^:]+):?(.+)?"
-                                                  var-and-filter))]
-         (if (and arg
-                  (not (and (.startsWith arg "\"")
-                            (.endsWith arg "\""))))
-           (throw (Exception. (str "filter arguments must be in quotes " node)))
-           (cons (-> node
-                     (assoc :type :string)
-                     (assoc-in
+    (when-let [node (first ast)]
+      (case (:type node)
+        :filter
+        (let [var-and-filter (.trim (:token (:body node)))
+              [var filter-name arg] (rest (re-find #"([^|]+)\|([^:]+):?(.+)?"
+                                                   var-and-filter))]         
+          (if (and arg
+                   (not (and (.startsWith arg "\"")
+                             (.endsWith arg "\""))))
+            (throw (Exception. (str "filter arguments must be in quotes " node)))           
+            (cons (-> node
+                    (assoc :type :string :escape (and *escape* (not= filter-name "to-json")))
+                    (assoc-in
                       [:body :token]
                       (str (if filter-name
                              (template-filter
-                              filter-name
-                              node
-                              (context-lookup context var)
-                              arg)
+                               filter-name
+                               node
+                               (context-lookup context var)
+                               arg)
                              (context-lookup context var-and-filter)))))
-                 (parse-filters (rest ast) context))))
-
-       :group
-       ;; not a tail call, I know
-       (cons (update-in node [:nodes] #(parse-filters % context))
-             (parse-filters (rest ast) context))
-
-       (cons node (parse-filters (rest ast) context))))))
+                  (parse-filters (rest ast) context))))
+        
+        :group
+        ;; not a tail call, I know
+        (cons (update-in (assoc node :escape *escape*) [:nodes] #(parse-filters % context))
+              (parse-filters (rest ast) context))
+        
+        (cons (assoc node :escape *escape*) (parse-filters (rest ast) context))))))
 
 (defn get-block-values [ast]
   (loop [ast (reverse ast)
@@ -283,8 +294,9 @@
     (loop [ast ast]
       (if-let [node (first ast)]
         (case (:type node)
-          :string (do
-                    (.append sb (:token (:body node)))
+          :string (do                    
+                    (.append sb (let [token (:token (:body node))]
+                                  (if-not (:escape node) token (escape-html token))))
                     (recur (rest ast)))
           :noop (recur (rest ast))
           (throw (Exception.
@@ -308,15 +320,16 @@
   (-> ast
       reduce-blocks))
 
-(defn parse [s context]
-  (-> s
-      string->ast
-      (ast->groups context)
-      groups->parsed))
+(defn parse [s context & {:keys [escape]}]  
+  (binding [*escape* (if (= escape false) false true)]
+    (-> s
+        string->ast
+        (ast->groups context)
+        groups->parsed)))
 
 (def render (comp realize parse))
 
-(defn render-file [filename context]
+(defn render-file [filename context & {:keys [escape]}]  
   (-> filename
       load-template
-      (render context)))
+      (render context :escape escape)))

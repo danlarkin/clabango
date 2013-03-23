@@ -75,7 +75,7 @@
         single
         plural))))
 
-(deftemplatefilter "to-json" [node body arg]
+(deftemplatefilter "to-json" [node body arg]  
   (if body
     (cheshire/encode body)
     "null"))

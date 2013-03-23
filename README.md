@@ -197,3 +197,9 @@ Clabango's template inheritance is modeled on Django's -- docs available here: h
 </body>
 </html>
 ```
+
+By default Clabango will escape HTML in strings, if you wish to disable escaping simply pass in `:escape false` as the last argument:
+
+```clojure
+(render-file "example/templates/index.html" {:greeting "Hey!"} :escape false)
+```
