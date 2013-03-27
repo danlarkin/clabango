@@ -9,7 +9,7 @@
 
 (declare lex* string->ast ast->groups)
 
-(defn start-of-new-token? [s i]
+(defn start-of-new-token? [^String s ^Integer i]  
   (let [c (.charAt s i)
         nc (try
              (.charAt s (inc i))
@@ -23,7 +23,13 @@
         (and (= c \})
              (= nc \})))))
 
-(defn buffer-string [s fileref i max offset line]
+
+(defn buffer-string [^String s 
+                     ^String fileref
+                     ^Long i 
+                     ^Integer max 
+                     ^Long offset 
+                     ^Long line]  
   (let [sb (StringBuffer.)]
     (loop [ni i]
       (if (or (>= ni max)
@@ -96,7 +102,7 @@
        rest-tokens]
       (throw (Exception. (str "parsing error after " a))))))
 
-(defn find-close-tag [tokens]
+(defn find-close-tag [^clojure.lang.LazySeq tokens]  
   (let [[a b c & rest-tokens] tokens]
     (if (and (= (:token a) :open-tag)
              (string? (:token b))
