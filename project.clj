@@ -9,4 +9,10 @@
                  [commons-codec "1.6"]
                  [joda-time "2.1"]
                  [net.sf.opencsv/opencsv "2.3"]
-                 [org.apache.commons/commons-lang3 "3.1"]])
+                 [criterium "0.3.1" :scope "test"]
+                 [org.apache.commons/commons-lang3 "3.1"]]
+  :test-selectors {:default (fn [{:keys [element-benchmarks site-benchmarks]}] 
+                              (not (or element-benchmarks site-benchmarks)))
+                   :element-benchmarks :element-benchmarks
+                   :site-benchmarks    :site-benchmarks
+                   :all (fn [m] true)})
