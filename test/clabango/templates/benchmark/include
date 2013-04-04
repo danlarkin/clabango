@@ -1,0 +1,4 @@
+hey this is the file I'm including
+{% for thing in things %}
+{{thing.foo}} - {{thing.bar}}
+{% endfor %}

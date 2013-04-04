@@ -1,0 +1,20 @@
+{% extends "clabango/templates/benchmark/middle" %}
+
+{% block 1 %}
+foo
+{% endblock %}
+
+{% block a %}
+{% include "clabango/templates/benchmark/include" %}
+{% for thing in things %}
+{% if message %}{{message}}{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block b %}
+{% for foo in foos %}
+{% for thing in things %}
+{% if message %}{{message|upper}}{% endif %}
+{% endfor %}
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "clabango/templates/benchmark/top" %}
+
+{% block 2 %}
+here's some text inside block 2
+{% block a %}default block a text{% endblock %}
+{% block b %}default block b text{% endblock %}
+{% endblock %}
