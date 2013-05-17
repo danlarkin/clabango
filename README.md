@@ -123,7 +123,7 @@ It's possible to define custom tags, just like with filters.
 
 ```clojure
 (ns example.core
-  (:require [clabango.filters :refer [deftemplatetag]]
+  (:require [clabango.tags :refer [deftemplatetag]]
             [clabango.parser :refer [render]]))
 
 (deftemplatetag "foo" [nodes context]
