@@ -34,7 +34,7 @@ It's possible to define custom filters for your project.
   (:require [clabango.filters :refer [deftemplatefilter]]
             [clabango.parser :refer [render]]))
 
-(deftemplatefilter prepend-hi [node body arg]
+(deftemplatefilter "prepend-hi" [node body arg]
   {:body (str "Hi, " body)})
 
 (defn render-hi [name]
