@@ -17,6 +17,11 @@
     `(~(vec (cons '_ f))
       ~@r)))
 
+(defn value-or-var [name context]
+  (if-let [m (re-find #"^\"(.*)\"$" name)]
+    (second m)
+    (context-lookup context name)))
+
 (defmacro deftemplatetag [open-tag & args]
   (let [[close-tag fn-tail] (if (string? (first args))
                               [(first args) (rest args)]
@@ -30,7 +35,7 @@
 (deftemplatetag "include" [nodes context]
   (let [[node] nodes
         [template] (:args node)
-        template (second (re-find #"\"(.*)\"" template))]
+        template (value-or-var template context)]
     {:string (load-template template)
      :context context}))
 
@@ -73,9 +78,7 @@
         operands (:args if-node)
         body-nodes (rest (butlast nodes))]
     {:nodes (if (apply = (for [op operands]
-                           (if (= \" (.charAt op 0))
-                             (subs op 1 (dec (count op)))
-                             (context-lookup context op))))
+                           (value-or-var op context)))
               (take-while #(not= "else" (:tag-name %)) body-nodes)
               (rest (drop-while #(not= "else" (:tag-name %)) body-nodes)))}))
 
