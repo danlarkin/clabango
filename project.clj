@@ -9,8 +9,7 @@
                  [commons-codec "1.6"]
                  [joda-time "2.1"]
                  [net.sf.opencsv/opencsv "2.3"]
-                 [criterium "0.3.1" :scope "test"]
-                 [org.apache.commons/commons-lang3 "3.1"]]
+                 [criterium "0.3.1" :scope "test"]]
   :test-selectors {:default (complement :benchmark)
                    :benchmark :benchmark
                    :all (constantly true)}

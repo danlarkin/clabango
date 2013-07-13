@@ -4,10 +4,30 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]])
   (:import (au.com.bytecode.opencsv CSVReader)
-           (java.io StringReader)
-           (org.apache.commons.lang3 StringEscapeUtils)))
+           (java.io StringReader)))
 
 (declare lex* string->ast ast->groups)
+
+(defn html-escape
+  "HTML-escapes the given string."
+  [^String s]
+  ;; This method is "Java in Clojure" for serious speedups.
+  ;; Stolen from davidsantiago/quoin and modified.
+  (let [sb (StringBuilder.)
+        slength (long (count s))]
+    (loop [idx (long 0)]
+      (if (>= idx slength)
+        (.toString sb)
+        (let [c (char (.charAt s idx))]
+          (case c
+            \& (.append sb "&amp;")
+            \< (.append sb "&lt;")
+            \> (.append sb "&gt;")
+            \" (.append sb "&quot;")
+            \™ (.append sb "&trade;")
+            \é (.append sb "&eacute;")
+            (.append sb c))
+          (recur (inc idx)))))))
 
 (defn start-of-new-token? [^String s i]
   (let [c (.charAt s i)
@@ -301,7 +321,7 @@
           :string (do
                     (.append sb (if (:safe? node)
                                   (:token (:body node))
-                                  (StringEscapeUtils/escapeHtml4
+                                  (html-escape
                                    (:token (:body node)))))
                     (recur (rest ast)))
           :noop (recur (rest ast))
