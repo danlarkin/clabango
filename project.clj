@@ -5,7 +5,7 @@
             :url "http://opensource.org/licenses/BSD-3-Clause"
             :distribution :repo}
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [cheshire "5.0.2"]
+                 [cheshire "5.2.0"]
                  [commons-codec "1.6"]
                  [joda-time "2.1"]
                  [net.sf.opencsv/opencsv "2.3"]
@@ -13,4 +13,5 @@
                  [org.apache.commons/commons-lang3 "3.1"]]
   :test-selectors {:default (complement :benchmark)
                    :benchmark :benchmark
-                   :all (constantly true)})
+                   :all (constantly true)}
+  :warn-on-reflection true)

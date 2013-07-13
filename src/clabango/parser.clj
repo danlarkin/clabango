@@ -9,7 +9,7 @@
 
 (declare lex* string->ast ast->groups)
 
-(defn start-of-new-token? [s i]
+(defn start-of-new-token? [^String s i]
   (let [c (.charAt s i)
         nc (try
              (.charAt s (inc i))
@@ -23,7 +23,7 @@
         (and (= c \})
              (= nc \})))))
 
-(defn buffer-string [s fileref i max offset line]
+(defn buffer-string [^String s fileref i max offset line]
   (let [sb (StringBuffer.)]
     (loop [ni i]
       (if (or (>= ni max)
@@ -37,7 +37,7 @@
           (.append sb (.charAt s ni))
           (recur (inc ni)))))))
 
-(defn lex* [s fileref i max offset line]
+(defn lex* [^String s fileref i max offset line]
   (lazy-seq
    (when (< i max)
      (let [c (.charAt s i)
@@ -79,7 +79,7 @@
          (buffer-string s fileref i max offset line))))))
 
 (defn lex [string-or-file]
-  (let [[s fileref] (if (string? string-or-file)
+  (let [[^String s fileref] (if (string? string-or-file)
                       [string-or-file "UNKNOWN"]
                       [(slurp string-or-file) string-or-file])
         max (.length s)]
@@ -131,7 +131,7 @@
    (when-let [node (first ast)]
      (if (= :tag (:type node))
        (let [[tag & args] (map first (re-seq #"[^\s\"']+|\"([^\"]*)\"|'([^']*)'"
-                                             (.trim (:token (:body node)))))]
+                                             (.trim ^String (:token (:body node)))))]
          (if (valid-tag? tag)
            (cons (assoc node
                    :tag-name tag
@@ -217,12 +217,12 @@
    (when-let [node (first ast)]
      (case (:type node)
        :filter
-       (let [[var & filters] (get-filters (.trim (:token (:body node))))]
+       (let [[var & filters] (get-filters (.trim ^String (:token (:body node))))]
          (cons
           (update-in
            (reduce
-            (fn [node filter-and-args]
-              (let [[filter-name arg] (.split filter-and-args ":" 2)
+            (fn [node ^String filter-and-args]
+              (let [[filter-name ^String arg] (.split filter-and-args ":" 2)
                     body (get-in node [:body :token])]
                 (if (and arg
                          (not (and (.startsWith arg "\"")
