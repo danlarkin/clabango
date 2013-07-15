@@ -4,12 +4,32 @@
             [clabango.tags :refer [get-block-status load-template
                                    template-tag valid-tags]])
   (:import (au.com.bytecode.opencsv CSVReader)
-           (java.io StringReader)
-           (org.apache.commons.lang3 StringEscapeUtils)))
+           (java.io StringReader)))
 
 (declare lex* string->ast ast->groups)
 
-(defn start-of-new-token? [s i]
+(defn html-escape
+  "HTML-escapes the given string."
+  [^String s]
+  ;; This method is "Java in Clojure" for serious speedups.
+  ;; Stolen from davidsantiago/quoin and modified.
+  (let [sb (StringBuilder.)
+        slength (long (count s))]
+    (loop [idx (long 0)]
+      (if (>= idx slength)
+        (.toString sb)
+        (let [c (char (.charAt s idx))]
+          (case c
+            \& (.append sb "&amp;")
+            \< (.append sb "&lt;")
+            \> (.append sb "&gt;")
+            \" (.append sb "&quot;")
+            \™ (.append sb "&trade;")
+            \é (.append sb "&eacute;")
+            (.append sb c))
+          (recur (inc idx)))))))
+
+(defn start-of-new-token? [^String s i]
   (let [c (.charAt s i)
         nc (try
              (.charAt s (inc i))
@@ -23,7 +43,7 @@
         (and (= c \})
              (= nc \})))))
 
-(defn buffer-string [s fileref i max offset line]
+(defn buffer-string [^String s fileref i max offset line]
   (let [sb (StringBuffer.)]
     (loop [ni i]
       (if (or (>= ni max)
@@ -37,7 +57,7 @@
           (.append sb (.charAt s ni))
           (recur (inc ni)))))))
 
-(defn lex* [s fileref i max offset line]
+(defn lex* [^String s fileref i max offset line]
   (lazy-seq
    (when (< i max)
      (let [c (.charAt s i)
@@ -79,7 +99,7 @@
          (buffer-string s fileref i max offset line))))))
 
 (defn lex [string-or-file]
-  (let [[s fileref] (if (string? string-or-file)
+  (let [[^String s fileref] (if (string? string-or-file)
                       [string-or-file "UNKNOWN"]
                       [(slurp string-or-file) string-or-file])
         max (.length s)]
@@ -131,7 +151,7 @@
    (when-let [node (first ast)]
      (if (= :tag (:type node))
        (let [[tag & args] (map first (re-seq #"[^\s\"']+|\"([^\"]*)\"|'([^']*)'"
-                                             (.trim (:token (:body node)))))]
+                                             (.trim ^String (:token (:body node)))))]
          (if (valid-tag? tag)
            (cons (assoc node
                    :tag-name tag
@@ -217,12 +237,12 @@
    (when-let [node (first ast)]
      (case (:type node)
        :filter
-       (let [[var & filters] (get-filters (.trim (:token (:body node))))]
+       (let [[var & filters] (get-filters (.trim ^String (:token (:body node))))]
          (cons
           (update-in
            (reduce
-            (fn [node filter-and-args]
-              (let [[filter-name arg] (.split filter-and-args ":" 2)
+            (fn [node ^String filter-and-args]
+              (let [[filter-name ^String arg] (.split filter-and-args ":" 2)
                     body (get-in node [:body :token])]
                 (if (and arg
                          (not (and (.startsWith arg "\"")
@@ -301,7 +321,7 @@
           :string (do
                     (.append sb (if (:safe? node)
                                   (:token (:body node))
-                                  (StringEscapeUtils/escapeHtml4
+                                  (html-escape
                                    (:token (:body node)))))
                     (recur (rest ast)))
           :noop (recur (rest ast))

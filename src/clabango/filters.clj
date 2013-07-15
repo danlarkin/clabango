@@ -2,12 +2,12 @@
   (:require [cheshire.core :as cheshire])
   (:import (org.apache.commons.codec.digest DigestUtils)
            (org.joda.time Instant)
-           (org.joda.time.format DateTimeFormat)))
+           (org.joda.time.format DateTimeFormat DateTimeFormatter)))
 
 (defn context-lookup
-  ([context var]
+  ([context ^String var]
      (context-lookup context var nil))
-  ([context var default]
+  ([context ^String var default]
      (get-in context (map keyword (.split var "\\.")) default)))
 
 (defmulti template-filter (fn [filter-name _ _ _] filter-name))
@@ -21,7 +21,7 @@
 (defmacro deftemplatefilter [filter-name & fn-tail]
   `(defmethod template-filter ~filter-name ~@(fix-args fn-tail)))
 
-(deftemplatefilter "upper" [node body arg]
+(deftemplatefilter "upper" [node ^String body arg]
   (when body
     {:body (.toUpperCase body)}))
 
@@ -36,10 +36,10 @@
     (if (not arg)
       (throw (Exception.
               (str "date filter requires a format string argument " node)))
-      {:body (.print (get-date-formatter (subs arg 1 (dec (count arg))))
+      {:body (.print ^DateTimeFormatter (get-date-formatter (subs arg 1 (dec (count arg))))
                      (Instant. body))})))
 
-(deftemplatefilter "hash" [node body arg]
+(deftemplatefilter "hash" [node ^String body arg]
   (when body
     (if (not arg)
       (throw (Exception.
